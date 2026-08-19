@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "standards-trainer.vercel.app" }],
+      "destination": "https://fretworks.vercel.app/standards",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    { "source": "/standards/(.*)", "destination": "/$1" },
+    { "source": "/standards", "destination": "/" }
+  ]
+}

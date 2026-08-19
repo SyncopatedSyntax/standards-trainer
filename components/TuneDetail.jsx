@@ -1,0 +1,111 @@
+// One tune: the facts it ships with, the four skills and where they stand,
+// and the notes field where the changes live until the bar grid arrives.
+
+import { useState } from 'react';
+import { btn, panel, labelCss, TextArea } from './ui.jsx';
+import { ACCENT } from '../lib/tool.js';
+import { cardId, isSkillSolid, todayStr, tuneIsReady } from '../lib/srs.js';
+
+const fmtDue = (card, today) => {
+  if (!card) return 'not started';
+  if (card.nextDue <= today) return 'due now';
+  const days = Math.round((new Date(card.nextDue) - new Date(today)) / 86400000);
+  return days === 1 ? 'tomorrow' : `in ${days} days`;
+};
+
+export default function TuneDetail({ tune, active, srs, notes, skills, onBack, onActivate, onDeactivate, onSetNote, onGrade, onRemoveCustom }) {
+  const today = todayStr();
+  const isActive = active.includes(tune.id);
+  const ready = isActive && tuneIsReady(srs, tune.id, skills);
+  const [confirmDrop, setConfirmDrop] = useState(false);
+
+  const fact = (k, v) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '12px', padding: '3px 0' }}>
+      <span style={{ color: '#888' }}>{k}</span>
+      <span style={{ color: '#ddd', textAlign: 'right' }}>{v}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: '14px', maxWidth: '640px', margin: '0 auto' }}>
+      <button onClick={onBack} style={{ ...btn(false), marginBottom: '12px' }}>← All tunes</button>
+
+      <div style={{ ...panel, marginBottom: '12px', borderColor: ready ? ACCENT + '66' : '#2a2840' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ fontSize: '18px', fontWeight: 900, color: '#fff', fontFamily: 'var(--font-heading)' }}>{tune.title}</div>
+          {ready && <span style={{ fontSize: '11px', color: ACCENT, fontWeight: 700 }}>✓ jam ready</span>}
+        </div>
+        <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{tune.composer}</div>
+        <div style={{ marginTop: '10px', borderTop: '1px solid #1a1928', paddingTop: '8px' }}>
+          {fact('Usual key', tune.key === 'modal' ? 'modal — no single key' : tune.key)}
+          {fact('Form', `${tune.form === 'through' ? 'through-composed' : tune.form} · ${tune.bars} bars`)}
+          {fact('Feel', tune.feel)}
+          {fact('Tempo', `${tune.tempoLo}–${tune.tempoHi} bpm`)}
+        </div>
+        {tune.why && <div style={{ fontSize: '12px', color: '#bbb', marginTop: '10px', lineHeight: 1.6, fontStyle: 'italic' }}>{tune.why}</div>}
+      </div>
+
+      {!isActive ? (
+        <div style={{ ...panel, marginBottom: '12px', textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', color: '#bbb', marginBottom: '10px', lineHeight: 1.6 }}>
+            Taking this on creates its four review cards. Nothing is scheduled until you do.
+          </div>
+          <button onClick={() => onActivate(tune.id)} style={{ ...btn(true), width: '100%', padding: '12px' }}>Start learning this</button>
+        </div>
+      ) : (
+        <div style={{ ...panel, marginBottom: '12px' }}>
+          <div style={labelCss}>The four skills</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {skills.map(s => {
+              const card = srs[cardId(tune.id, s.id)];
+              const solid = isSkillSolid(card);
+              return (
+                <div key={s.id} style={{ background: '#0f0e17', border: `1px solid ${solid ? ACCENT + '55' : '#2a2840'}`, borderRadius: '9px', padding: '9px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: solid ? ACCENT : '#555', fontSize: '14px' }}>{solid ? '●' : '○'}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', flex: 1 }}>{s.label}</span>
+                    <span style={{ fontSize: '10px', color: '#888', fontFamily: 'var(--font-mono)' }}>{fmtDue(card, today)}</span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#888', margin: '4px 0 7px', lineHeight: 1.5 }}>{s.blurb}</div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button onClick={() => onGrade(cardId(tune.id, s.id), true)} style={{ ...btn(false, '#00b894'), flex: 1, color: '#00b894', borderColor: '#00b89444' }}>Got it</button>
+                    <button onClick={() => onGrade(cardId(tune.id, s.id), false)} style={{ ...btn(false, '#ff6363'), flex: 1, color: '#ff8f8f', borderColor: '#ff636344' }}>Shaky</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div style={{ ...panel, marginBottom: '12px' }}>
+        <TextArea label="Changes & notes" value={notes[tune.id] || ''} onChange={v => onSetNote(tune.id, v)}
+          placeholder={'Type the changes here, four bars to a line:\n\n| Cm7 | F7 | BbMaj7 | EbMaj7 |\n| Am7b5 | D7 | Gm | Gm |'} />
+        <div style={{ fontSize: '10px', color: '#666', marginTop: '8px', lineHeight: 1.6 }}>
+          Kept on this device only — charts are copyrighted, so the app ships the facts above and you supply the rest. Writing them out is half of learning the tune.
+        </div>
+      </div>
+
+      {isActive && (
+        <div style={{ ...panel }}>
+          {confirmDrop ? (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => { onDeactivate(tune.id); setConfirmDrop(false); onBack(); }} style={{ ...btn(true, '#ff6363'), flex: 1 }}>Drop it — loses the schedule</button>
+              <button onClick={() => setConfirmDrop(false)} style={btn(false)}>Cancel</button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmDrop(true)} style={{ ...btn(false, '#ff6363'), width: '100%', color: '#ff8f8f', borderColor: '#ff636333' }}>
+              Drop from repertoire
+            </button>
+          )}
+          {tune.custom && !confirmDrop && (
+            <button onClick={() => { onRemoveCustom(tune.id); onBack(); }} style={{ ...btn(false), width: '100%', marginTop: '8px', color: '#888' }}>
+              Delete this tune entirely
+            </button>
+          )}
+          <div style={{ fontSize: '10px', color: '#666', marginTop: '8px' }}>Your notes are kept either way.</div>
+        </div>
+      )}
+    </div>
+  );
+}
