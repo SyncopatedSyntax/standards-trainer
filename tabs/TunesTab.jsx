@@ -1,18 +1,23 @@
 // The repertoire. Two things in one list: the shipped curriculum, in teaching
 // order, and whatever you have taken on — including tunes you added yourself.
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import TuneDetail from '../components/TuneDetail.jsx';
 import { btn, panel, labelCss, Field } from '../components/ui.jsx';
 import { ACCENT } from '../lib/tool.js';
+import TuneStatus, { byAttention } from '../components/TuneStatus.jsx';
 import { TIERS, CORE_TUNES } from '../data/tunes.js';
-import { cardId, isSkillSolid, tuneIsReady } from '../lib/srs.js';
+import { tuneIsReady, todayStr } from '../lib/srs.js';
+import { chartFor, countBars, countFilled } from '../lib/chart.js';
 
 const slug = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 
-export default function TunesTab({ tunes, byId, active, srs, notes, skills, onActivate, onDeactivate, onSetNote, onAddTune, onRemoveCustom, onGrade, scrollRef }) {
+export default function TunesTab({ tunes, byId, active, srs, notes, charts, skills, onActivate, onDeactivate, onSetNote, onSetChart, onAddTune, onRemoveCustom, onGrade, scrollRef, openId, onOpened }) {
   const [sel, setSel] = useState(null);
-  const [filter, setFilter] = useState('core');
+  // Open on your own repertoire once you have one. The core path is the right
+  // first screen exactly once — after that, "what am I working on" is the
+  // question this tab is opened to answer.
+  const [filter, setFilter] = useState(() => (active.length ? 'mine' : 'core'));
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ title: '', composer: '', key: '', form: 'AABA', bars: 32, feel: '' });
@@ -27,8 +32,19 @@ export default function TunesTab({ tunes, byId, active, srs, notes, skills, onAc
     return r;
   }, [tunes, active, filter, search]);
 
-  // Group by tier so the curriculum's shape is visible, not just a flat list.
+  const today = todayStr();
+
+  // Group by tier so the curriculum's shape is visible, not just a flat list —
+  // except in Mine, where a handful of tunes spread across five tier headings
+  // is all chrome and no information. There they go in one list, ordered by
+  // what is asking for attention.
   const grouped = useMemo(() => {
+    if (filter === 'mine') {
+      const ids = list.map(t => t.id).sort(byAttention(srs, skills, today));
+      const order = new Map(ids.map((id, i) => [id, i]));
+      return [{ tier: { n: -1, label: 'Working on', blurb: 'Ordered by what wants reviewing. Tap one to grade it, edit the changes, or drop it.' },
+                tunes: [...list].sort((a, b) => order.get(a.id) - order.get(b.id)) }];
+    }
     const out = [];
     for (const tier of TIERS) {
       const inTier = list.filter(t => t.tier === tier.n);
@@ -37,7 +53,17 @@ export default function TunesTab({ tunes, byId, active, srs, notes, skills, onAc
     const custom = list.filter(t => t.custom);
     if (custom.length) out.push({ tier: { n: 0, label: 'Your own tunes', blurb: 'Added by you — they schedule exactly like the rest.' }, tunes: custom });
     return out;
-  }, [list]);
+  }, [list, filter, srs, skills, today]);
+
+  // Opened from another tab. This sits above the early return below, with
+  // every other hook — a hook after it would not run on the renders where a
+  // tune is open, which is how this file shipped broken once already.
+  useEffect(() => {
+    if (!openId) return;
+    if (scrollRef?.current) { savedScrollY.current = 0; scrollRef.current.scrollTop = 0; }
+    setSel(openId);
+    onOpened?.();
+  }, [openId, onOpened, scrollRef]);
 
   const handleSel = id => {
     savedScrollY.current = scrollRef?.current ? scrollRef.current.scrollTop : 0;
@@ -48,9 +74,9 @@ export default function TunesTab({ tunes, byId, active, srs, notes, skills, onAc
 
   const tune = sel ? byId.get(sel) : null;
   if (tune) {
-    return <TuneDetail tune={tune} active={active} srs={srs} notes={notes} skills={skills}
+    return <TuneDetail tune={tune} active={active} srs={srs} notes={notes} charts={charts} skills={skills}
       onBack={back} onActivate={onActivate} onDeactivate={onDeactivate}
-      onSetNote={onSetNote} onGrade={onGrade} onRemoveCustom={onRemoveCustom} />;
+      onSetNote={onSetNote} onSetChart={onSetChart} onGrade={onGrade} onRemoveCustom={onRemoveCustom} />;
   }
 
   const saveNew = () => {
@@ -114,6 +140,9 @@ export default function TunesTab({ tunes, byId, active, srs, notes, skills, onAc
             {group.map(t => {
               const isActive = active.includes(t.id);
               const ready = isActive && tuneIsReady(srs, t.id, skills);
+              const chart = isActive ? chartFor(charts, t) : null;
+              const written = chart ? countFilled(chart) : 0;
+              const barsTotal = chart ? countBars(chart) : 0;
               return (
                 <div key={t.id} onClick={() => handleSel(t.id)}
                   style={{ background: '#13121f', border: `1px solid ${ready ? ACCENT + '66' : isActive ? '#3a3852' : '#2a2840'}`, borderRadius: '10px', padding: '10px', cursor: 'pointer', touchAction: 'manipulation' }}>
@@ -126,17 +155,17 @@ export default function TunesTab({ tunes, byId, active, srs, notes, skills, onAc
                         {t.key === 'modal' ? 'modal' : t.key} · {t.bars} bars · {t.feel}
                       </div>
                     </div>
-                    {isActive ? (
-                      <div style={{ display: 'flex', gap: '3px' }} aria-label="skill progress">
-                        {skills.map(s => (
-                          <span key={s.id} title={s.label}
-                            style={{ width: '7px', height: '7px', borderRadius: '50%', background: isSkillSolid(srs[cardId(t.id, s.id)]) ? ACCENT : '#3a3852' }} />
-                        ))}
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: '10px', color: '#666' }}>not started</span>
-                    )}
+                    {isActive
+                      ? <TuneStatus srs={srs} tuneId={t.id} skills={skills} today={today} />
+                      : <span style={{ fontSize: '10px', color: '#666' }}>not started</span>}
                   </div>
+                  {isActive && (
+                    <div style={{ fontSize: '10px', color: written === barsTotal ? '#6b6980' : '#8a88a0', marginTop: '6px' }}>
+                      {written === 0 ? '○ changes not written out yet'
+                        : written < barsTotal ? `◐ changes ${written}/${barsTotal} bars`
+                          : '● changes written out'}
+                    </div>
+                  )}
                   {!isActive && t.why && <div style={{ fontSize: '11px', color: '#8a88a0', marginTop: '5px', lineHeight: 1.5 }}>{t.why}</div>}
                 </div>
               );

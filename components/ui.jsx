@@ -1,10 +1,10 @@
 import { ACCENT } from '../lib/tool.js';
 
 // Small shared UI primitives, the same set Focused Chord Trainer uses so the
-// two apps look like siblings. Its chord-symbol keypad is not carried over —
-// nothing in slice 1 enters chord symbols. When the bar grid lands in slice 2,
-// take `SymbolField` from Focused-Chord-Trainer/components/ui.jsx rather than
-// writing another one.
+// two apps look like siblings. Its `SymbolField` is deliberately NOT ported:
+// the chord-symbol keypad here has to float above the on-screen keyboard
+// rather than sit under a field, so it lives in ChartEditor with the layout
+// constraint that shapes it.
 
 // Toggle/pill button style. `on` highlights it in `color`.
 export const btn = (on, color = ACCENT) => ({
@@ -56,3 +56,4 @@ export function TextArea({ label, value, onChange, placeholder, rows = 8 }) {
     </div>
   );
 }
+

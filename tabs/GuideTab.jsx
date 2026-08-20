@@ -73,9 +73,17 @@ export default function GuideTab() {
           facts. The melodies and the changes are under copyright, so they are not shipped and
           never will be.
         </p>
-        <p style={{ margin: 0 }}>
+        <p style={{ margin: '0 0 10px' }}>
           Write them out yourself from your Real Book or by ear. It is not a workaround: copying
           out a form bar by bar is one of the more effective ways to learn it.
+        </p>
+        <p style={{ margin: 0 }}>
+          Open a tune and tap a bar in the grid. The grid comes pre-shaped from the tune's form —
+          an AABA 32 gives you four eight-bar sections — so the shape is right before you start.
+          Two chords in one bar is just two words in the cell. The keypad above the keyboard has
+          the symbols a phone cannot type: {'Δ'} {'ø'} {'°'} {'♭'} {'♯'}. Where a section repeats,
+          its heading offers to copy the one above, which you can then edit — the last bars of a
+          second A are usually where it differs.
         </p>
       </Section>
 

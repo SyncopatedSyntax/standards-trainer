@@ -3,14 +3,21 @@
 
 import { useMemo } from 'react';
 import { panel, labelCss, EmptyState } from '../components/ui.jsx';
+import TuneStatus, { byAttention } from '../components/TuneStatus.jsx';
 import { ACCENT } from '../lib/tool.js';
 import { stats, forecast, tuneIsReady, todayStr } from '../lib/srs.js';
+import { chartFor, countBars, countFilled } from '../lib/chart.js';
 
-export default function ProgressTab({ tunes, byId, active, srs, skills, onGoTunes }) {
+export default function ProgressTab({ tunes, byId, active, srs, charts, skills, onGoTunes, onGoTune }) {
   const today = todayStr();
   const s = useMemo(() => stats(srs, active, skills), [srs, active, skills]);
   const days = useMemo(() => forecast(srs, active, skills, 7, today), [srs, active, skills, today]);
   const readyTunes = useMemo(() => active.filter(id => tuneIsReady(srs, id, skills)).map(id => byId.get(id)).filter(Boolean), [active, srs, skills, byId]);
+  // Same ordering the Tunes tab's Mine list uses — one repertoire should not
+  // appear in two different orders depending on which tab you reached it from.
+  const working = useMemo(
+    () => [...active].sort(byAttention(srs, skills, today)).map(id => byId.get(id)).filter(Boolean),
+    [active, srs, skills, byId, today]);
 
   if (active.length === 0) {
     return <EmptyState icon="📊" title="Nothing tracked yet"
@@ -39,6 +46,38 @@ export default function ProgressTab({ tunes, byId, active, srs, skills, onGoTune
             ))}
           </div>
         )}
+      </div>
+
+      {/* Every tune you have taken on. The headline above answers "am I ready";
+          this answers "what am I actually working on, and what does it want". */}
+      <div style={{ ...panel, marginBottom: '12px' }}>
+        <div style={labelCss}>Working on</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {working.map(t => {
+            const chart = chartFor(charts, t);
+            const written = countFilled(chart), barsTotal = countBars(chart);
+            return (
+              <div key={t.id} onClick={() => onGoTune?.(t.id)}
+                style={{ background: '#0f0e17', border: '1px solid #242235', borderRadius: '9px', padding: '9px', cursor: onGoTune ? 'pointer' : 'default', touchAction: 'manipulation' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
+                    <div style={{ fontSize: '10px', color: '#777', marginTop: '1px' }}>
+                      {t.key === 'modal' ? 'modal' : t.key} · {written}/{barsTotal} bars written
+                    </div>
+                  </div>
+                  <TuneStatus srs={srs} tuneId={t.id} skills={skills} today={today} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: '11px', marginTop: '9px', fontSize: '10px', flexWrap: 'wrap' }}>
+          <span style={{ color: ACCENT }}>● solid</span>
+          <span style={{ color: '#e8a838' }}>● learning</span>
+          <span style={{ color: '#8a88a0' }}>○ not started</span>
+          <span style={{ color: '#666', marginLeft: 'auto' }}>head · changes · form · solo</span>
+        </div>
       </div>
 
       {/* Skill breakdown */}

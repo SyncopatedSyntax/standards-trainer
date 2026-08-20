@@ -6,10 +6,12 @@
 
 import { useState, useMemo } from 'react';
 import { btn, panel, labelCss, EmptyState } from '../components/ui.jsx';
+import BarGrid from '../components/BarGrid.jsx';
 import { ACCENT } from '../lib/tool.js';
 import { dueCards, todayStr } from '../lib/srs.js';
+import { chartFor, isChartEmpty } from '../lib/chart.js';
 
-export default function TodayTab({ tunes, byId, active, srs, notes, skills, onGrade, onGoTunes }) {
+export default function TodayTab({ tunes, byId, active, srs, notes, charts, skills, onGrade, onGoTunes }) {
   // Snapshot: computed once, from the schedule as it stood when the tab opened.
   const [queue] = useState(() => dueCards(srs, active, skills));
   const [done, setDone] = useState({});   // cardId -> true|false, this session
@@ -48,6 +50,11 @@ export default function TodayTab({ tunes, byId, active, srs, notes, skills, onGr
   const tune = byId.get(current.tuneId);
   const skill = skillById.get(current.skill);
   const note = notes[current.tuneId];
+  // Behind a <details> on purpose. The card asks you to play the thing from
+  // memory, so the chart being one tap away is the difference between a hint
+  // and an answer key.
+  const chart = tune ? chartFor(charts, tune) : null;
+  const hasChart = chart && !isChartEmpty(chart);
 
   const answer = correct => {
     onGrade(current.id, correct);
@@ -80,10 +87,17 @@ export default function TodayTab({ tunes, byId, active, srs, notes, skills, onGr
         </div>
       </div>
 
-      {note && (
+      {(hasChart || note) && (
         <details style={{ ...panel, marginBottom: '12px' }}>
-          <summary style={{ ...labelCss, marginBottom: 0, cursor: 'pointer' }}>Your notes — peek only if stuck</summary>
-          <pre style={{ fontSize: '12px', color: '#bbb', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: '10px', lineHeight: 1.7 }}>{note}</pre>
+          <summary style={{ ...labelCss, marginBottom: 0, cursor: 'pointer' }}>
+            {hasChart ? 'The changes' : 'Your notes'} — peek only if stuck
+          </summary>
+          <div style={{ marginTop: '11px' }}>
+            {hasChart && <BarGrid chart={chart} compact />}
+            {note && (
+              <pre style={{ fontSize: '12px', color: '#bbb', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: hasChart ? '12px' : 0, lineHeight: 1.7 }}>{note}</pre>
+            )}
+          </div>
         </details>
       )}
 

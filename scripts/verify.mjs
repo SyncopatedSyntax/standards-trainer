@@ -10,6 +10,7 @@
 //   node scripts/verify.mjs
 
 import { CORE_TUNES, TIERS, SKILLS, LETTER_FORMS } from '../data/tunes.js';
+import { defaultSections, countBars, emptyChart, parsePipedBars, fillBars } from '../lib/chart.js';
 
 let failures = 0;
 const check = (name, fn) => {
@@ -94,6 +95,75 @@ check('the four skills are well-formed', () => {
     if (!s.label || !s.blurb) fail(`skill ${s.id} is missing a label or blurb`);
   }
 });
+
+// ── The bar grid's layout ────────────────────────────────────────────────
+// `defaultSections` derives an empty grid from a tune's form and bar count. A
+// grid that loses or invents bars is silently wrong — you would only notice
+// weeks later, having written a chart into the wrong shape — so re-derive it
+// for every tune rather than trusting the arithmetic by eye.
+console.log('\nlib/chart.js');
+
+check('every tune lays out into exactly its own bar count', () => {
+  for (const t of CORE_TUNES) {
+    const total = countBars(emptyChart(t));
+    if (total !== t.bars) fail(`${t.id}: form ${t.form} laid out ${total} bars, but the tune is ${t.bars}`);
+  }
+});
+
+check('a letter form gets one section per letter, all equal length', () => {
+  for (const t of CORE_TUNES) {
+    if (!LETTER_FORMS.test(t.form) || t.bars % t.form.length !== 0) continue;
+    const secs = defaultSections(t);
+    if (secs.length !== t.form.length) fail(`${t.id}: ${t.form} gave ${secs.length} sections`);
+    if (secs.map(x => x.label).join('') !== t.form) fail(`${t.id}: section labels ${secs.map(x => x.label).join('')} do not spell ${t.form}`);
+    const per = t.bars / t.form.length;
+    for (const x of secs) if (x.bars.length !== per) fail(`${t.id}: section ${x.label} has ${x.bars.length} bars, expected ${per}`);
+  }
+});
+
+check('a blues is one undivided section', () => {
+  for (const t of CORE_TUNES.filter(x => x.form === 'blues')) {
+    const secs = defaultSections(t);
+    if (secs.length !== 1) fail(`${t.id}: a blues should be one section, got ${secs.length}`);
+  }
+});
+
+check('a short tail joins the last section rather than becoming a stub', () => {
+  // All The Things You Are is 8+8+8+12. A naive chunker gives 8+8+8+8+4 and
+  // misrepresents the form, so this pins the behaviour for every long tail.
+  for (const t of CORE_TUNES.filter(x => x.form === 'through')) {
+    for (const x of defaultSections(t)) {
+      if (x.bars.length < 8) fail(`${t.id}: section ${x.label} is only ${x.bars.length} bars — a stub, not a section`);
+    }
+  }
+});
+
+check('every grid starts completely empty', () => {
+  // The guard below stops chord data reaching data/tunes.js; this stops it
+  // reaching the user through the grid builder instead.
+  for (const t of CORE_TUNES) {
+    for (const s of defaultSections(t)) {
+      for (const b of s.bars) if (b !== '') fail(`${t.id}: section ${s.label} ships a pre-filled bar "${b}"`);
+    }
+  }
+});
+
+check('notes written with pipes read back as bars', () => {
+  const bars = parsePipedBars('A section\n| Cm7 | F7 | B♭Δ | E♭Δ |\n| Aø |  | G7 | Cm7 |');
+  const expect = ['Cm7', 'F7', 'B♭Δ', 'E♭Δ', 'Aø', '', 'G7', 'Cm7'];
+  if (bars.length !== expect.length) fail(`got ${bars.length} bars, expected ${expect.length}: ${JSON.stringify(bars)}`);
+  bars.forEach((b, i) => { if (b !== expect[i]) fail(`bar ${i + 1}: got "${b}", expected "${expect[i]}"`); });
+  if (parsePipedBars('just some prose, no pipes').length !== 0) fail('a line without pipes is prose and must be skipped');
+});
+
+check('an import never changes the shape of the form', () => {
+  const t = CORE_TUNES.find(x => x.id === 'blue-bossa');
+  const before = emptyChart(t);
+  const after = fillBars(before, Array.from({ length: 200 }, (_, i) => `X${i}`));
+  if (countBars(after) !== countBars(before)) fail('extra bars grew the grid — they must be dropped');
+});
+
+console.log('\ndata/tunes.js — the guard');
 
 // ── The one that actually matters ────────────────────────────────────────
 // Real Book charts are under copyright. This file ships facts and nothing

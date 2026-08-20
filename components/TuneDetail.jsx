@@ -3,17 +3,11 @@
 
 import { useState } from 'react';
 import { btn, panel, labelCss, TextArea } from './ui.jsx';
+import ChartEditor from './ChartEditor.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { cardId, isSkillSolid, todayStr, tuneIsReady } from '../lib/srs.js';
+import { cardId, isSkillSolid, todayStr, tuneIsReady, relativeDay } from '../lib/srs.js';
 
-const fmtDue = (card, today) => {
-  if (!card) return 'not started';
-  if (card.nextDue <= today) return 'due now';
-  const days = Math.round((new Date(card.nextDue) - new Date(today)) / 86400000);
-  return days === 1 ? 'tomorrow' : `in ${days} days`;
-};
-
-export default function TuneDetail({ tune, active, srs, notes, skills, onBack, onActivate, onDeactivate, onSetNote, onGrade, onRemoveCustom }) {
+export default function TuneDetail({ tune, active, srs, notes, charts, skills, onBack, onActivate, onDeactivate, onSetNote, onSetChart, onGrade, onRemoveCustom }) {
   const today = todayStr();
   const isActive = active.includes(tune.id);
   const ready = isActive && tuneIsReady(srs, tune.id, skills);
@@ -64,7 +58,7 @@ export default function TuneDetail({ tune, active, srs, notes, skills, onBack, o
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ color: solid ? ACCENT : '#555', fontSize: '14px' }}>{solid ? '●' : '○'}</span>
                     <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', flex: 1 }}>{s.label}</span>
-                    <span style={{ fontSize: '10px', color: '#888', fontFamily: 'var(--font-mono)' }}>{fmtDue(card, today)}</span>
+                    <span style={{ fontSize: '10px', color: '#888', fontFamily: 'var(--font-mono)' }}>{relativeDay(card?.nextDue, today)}</span>
                   </div>
                   <div style={{ fontSize: '11px', color: '#888', margin: '4px 0 7px', lineHeight: 1.5 }}>{s.blurb}</div>
                   <div style={{ display: 'flex', gap: '6px' }}>
@@ -78,12 +72,12 @@ export default function TuneDetail({ tune, active, srs, notes, skills, onBack, o
         </div>
       )}
 
+      <ChartEditor tune={tune} charts={charts} onSetChart={onSetChart} note={notes[tune.id] || ''} />
+
       <div style={{ ...panel, marginBottom: '12px' }}>
-        <TextArea label="Changes & notes" value={notes[tune.id] || ''} onChange={v => onSetNote(tune.id, v)}
-          placeholder={'Type the changes here, four bars to a line:\n\n| Cm7 | F7 | BbMaj7 | EbMaj7 |\n| Am7b5 | D7 | Gm | Gm |'} />
-        <div style={{ fontSize: '10px', color: '#666', marginTop: '8px', lineHeight: 1.6 }}>
-          Kept on this device only — charts are copyrighted, so the app ships the facts above and you supply the rest. Writing them out is half of learning the tune.
-        </div>
+        <TextArea label="Notes" value={notes[tune.id] || ''} onChange={v => onSetNote(tune.id, v)}
+          rows={5}
+          placeholder={'Anything the grid above does not hold — which recording, a fingering, the intro, what went wrong last time.'} />
       </div>
 
       {isActive && (
