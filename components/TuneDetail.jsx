@@ -39,6 +39,31 @@ export default function TuneDetail({ tune, active, srs, notes, charts, skills, o
         {tune.why && <div style={{ fontSize: '12px', color: '#bbb', marginTop: '10px', lineHeight: 1.6, fontStyle: 'italic' }}>{tune.why}</div>}
       </div>
 
+      {/* Two panels rather than one: the facts are why the tune is interesting,
+          the guitar notes are what to do about it on this instrument. Mixing
+          them would bury the practical half under the trivia. */}
+      {tune.facts?.length > 0 && (
+        <div style={{ ...panel, marginBottom: '12px' }}>
+          <div style={labelCss}>Worth knowing</div>
+          <ul style={{ margin: 0, paddingLeft: '17px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {tune.facts.map((f, i) => (
+              <li key={i} style={{ fontSize: '12.5px', color: '#c8c6da', lineHeight: 1.65 }}>{f}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {tune.guitar?.length > 0 && (
+        <div style={{ ...panel, marginBottom: '12px', borderColor: ACCENT + '33' }}>
+          <div style={{ ...labelCss, color: ACCENT }}>On guitar</div>
+          <ul style={{ margin: 0, paddingLeft: '17px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {tune.guitar.map((g, i) => (
+              <li key={i} style={{ fontSize: '12.5px', color: '#c8c6da', lineHeight: 1.65 }}>{g}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!isActive ? (
         <div style={{ ...panel, marginBottom: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '13px', color: '#bbb', marginBottom: '10px', lineHeight: 1.6 }}>

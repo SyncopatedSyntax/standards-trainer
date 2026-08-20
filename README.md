@@ -5,7 +5,9 @@ jazz repertoire — which tunes you know, how well, and what to review before it
 fades — so you can turn up to a jam and call a tune.
 
 Twenty-five standards in teaching order, four skills each (head, changes, form,
-solo), and a spaced-repetition queue that tells you what to practise today.
+solo), and a spaced-repetition queue that tells you what to practise today. Each
+tune carries a few researched notes on where it came from, and a few things to
+try with it on guitar specifically.
 
 **Charts are not included.** The app ships each tune's facts — key, form, bar
 count, feel, tempo — and you write the changes in yourself, into a bar grid the

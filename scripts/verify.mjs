@@ -42,6 +42,33 @@ check('every tune is attributed and described', () => {
   }
 });
 
+check('every tune carries researched facts and guitar notes', () => {
+  for (const t of CORE_TUNES) {
+    for (const [field, min] of [['facts', 2], ['guitar', 2]]) {
+      const v = t[field];
+      if (!Array.isArray(v)) fail(`${t.id}: ${field} must be an array`);
+      if (v.length < min) fail(`${t.id}: only ${v.length} ${field} — the point is that each tune earns its place`);
+      for (const line of v) {
+        if (typeof line !== 'string' || !line.trim()) fail(`${t.id}: an empty ${field} entry`);
+        // A one-clause note is almost always a placeholder someone meant to
+        // come back to. Better to fail here than to ship "Nice tune."
+        if (line.trim().length < 40) fail(`${t.id}: ${field} entry too thin to be worth reading — "${line}"`);
+      }
+    }
+  }
+});
+
+check('guitar notes are actually about the guitar', () => {
+  // Cheap but effective: a note that mentions nothing physical about the
+  // instrument is general advice that has drifted into the wrong field.
+  const GUITARISH = /string|fret|neck|position|pick|voicing|shape|grip|chord melody|octave|damp|thumb|comp|open|barre|triad|arpeggi|fingering|register|strum|mute|slide|vibrato/i;
+  for (const t of CORE_TUNES) {
+    if (!t.guitar.some(g => GUITARISH.test(g))) {
+      fail(`${t.id}: no guitar note mentions anything specific to the instrument`);
+    }
+  }
+});
+
 check('every key is a real key (or explicitly modal)', () => {
   for (const t of CORE_TUNES) {
     if (t.key === 'modal') continue;
@@ -268,9 +295,17 @@ check('no copyrighted material has crept into the data', () => {
       if (BANNED.includes(k)) fail(`${t.id}: field "${k}" must not be shipped — the user enters that himself`);
     }
     // A stray chord symbol in a prose field is the other way this leaks in.
-    for (const k of ['why', 'feel']) {
-      if (/\|\s*[A-G][b#]?(m|maj|min|dim|aug|sus)?\d?\s*\|/.test(t[k] || '')) {
-        fail(`${t.id}: "${k}" looks like it contains a chart`);
+    // The facts and guitar notes are the likeliest route now that they exist:
+    // describing a tune's harmony is fine, writing out its changes is not.
+    const prose = ['why', 'feel', ...(t.facts || []), ...(t.guitar || [])];
+    for (const text of prose) {
+      if (/\|\s*[A-G][b#♭♯]?(m|maj|min|dim|aug|sus|Δ|ø|°)?\d?\s*\|/.test(text || '')) {
+        fail(`${t.id}: prose looks like it contains a chart — "${String(text).slice(0, 60)}"`);
+      }
+      // Three or more absolute chord symbols in a row is a progression, not a
+      // description of one.
+      if (/([A-G][b#♭♯]?(m|maj|min|dim|aug|sus|Δ|ø|°)?\d?\s+){2,}[A-G][b#♭♯]?(m|maj|min|dim|aug|sus|Δ|ø|°)?\d/.test(text || '')) {
+        fail(`${t.id}: prose spells out a chord sequence — "${String(text).slice(0, 60)}"`);
       }
     }
   }

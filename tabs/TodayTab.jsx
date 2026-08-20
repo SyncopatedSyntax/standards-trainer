@@ -55,6 +55,8 @@ export default function TodayTab({ tunes, byId, active, srs, notes, charts, skil
   // and an answer key.
   const chart = tune ? chartFor(charts, tune) : null;
   const hasChart = chart && !isChartEmpty(chart);
+  const skillIdx = skills.findIndex(s => s.id === current.skill);
+  const tip = tune?.guitar?.length ? tune.guitar[Math.max(0, skillIdx) % tune.guitar.length] : null;
 
   const answer = correct => {
     onGrade(current.id, correct);
@@ -86,6 +88,17 @@ export default function TodayTab({ tunes, byId, active, srs, notes, charts, skil
           Put the phone down and actually play it. Then answer honestly — the schedule is only as good as the grading.
         </div>
       </div>
+
+      {/* One guitar note, not the whole list — this is the moment you are about
+          to play, so it wants a single thing to try. Which one is keyed to the
+          skill rather than random, so the four cards for a tune surface
+          different advice instead of repeating one tip four times. */}
+      {tip && (
+        <div style={{ ...panel, marginBottom: '12px', borderColor: ACCENT + '33' }}>
+          <div style={{ ...labelCss, color: ACCENT }}>Try this on guitar</div>
+          <div style={{ fontSize: '12.5px', color: '#c8c6da', lineHeight: 1.65 }}>{tip}</div>
+        </div>
+      )}
 
       {(hasChart || note) && (
         <details style={{ ...panel, marginBottom: '12px' }}>

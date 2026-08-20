@@ -37,7 +37,8 @@ this app is covered by both with no extra wiring.
 
 - `data/tunes.js` → `CORE_TUNES` (25, facts only), `TIERS`, `SKILLS`.
   Reference data, never written to. **Array order is the curriculum** — the
-  verify script asserts tiers never go backwards.
+  verify script asserts tiers never go backwards. Each tune also carries
+  `facts[]` and `guitar[]` — see *Facts and guitar notes* below.
 - `js_active` — tune ids taken on. A core tune is **inert until activated**, so
   browsing the path costs nothing and the queue can't open with 100 cards.
 - `js_srs` — SM-2 state keyed `` `${tuneId}.${skill}` ``.
@@ -141,6 +142,36 @@ also needs `/standards` in its `vercel.json` rewrites and in `public/sw.js`'s
 lockfile, and Vercel builds from the lockfile — so a registry change is
 invisible until each consumer is repinned. It fails quietly. See
 `Focused-Chord-Trainer/docs/fretworks-rollout.md`.
+
+## Facts and guitar notes
+
+Every tune carries `facts[]` (2–3 researched notes on where it came from) and
+`guitar[]` (2–3 things to actually do with it on this instrument). They are
+separate fields, and separate panels in the UI, because mixing them buries the
+practical half under the trivia. The Today card shows **one** guitar note,
+picked by the skill's index rather than at random, so a tune's four cards
+surface different advice instead of repeating one tip four times.
+
+**These were researched, not invented, and the next edit must be too.** Every
+fact came from a source that was actually read — publication dates, session
+dates, personnel, the Chuck Wayne authorship evidence at the Library of
+Congress, the Yardley jingle, the Hucklebuck chart run. Where an origin story
+is contested (Doxy's name, who Billie's Bounce is named for, whether Bigard
+wrote the C Jam Blues melody) the text says so rather than picking a side.
+Do not add a fact you have not checked; a plausible invention is worse here
+than a gap, because nothing downstream can catch it.
+
+`verify.mjs` catches the mechanical failures only: both fields present, at
+least two entries each, nothing under 40 characters (a one-clause note is
+almost always an unfinished placeholder), and every tune having at least one
+guitar note that mentions something physical about the instrument — a string,
+a fret, a position, a voicing. That last check earned its place immediately: it
+caught All of Me shipping two notes of general musical advice with nothing
+guitar-specific in either.
+
+The copyright guard now also sweeps `facts` and `guitar`. Describing a tune's
+harmony is fine; spelling out its changes is not, so the prose check rejects
+pipe-delimited bars *and* three or more absolute chord symbols in a row.
 
 ## Form templates — the one place harmony ships
 
