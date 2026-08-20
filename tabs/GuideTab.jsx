@@ -77,6 +77,15 @@ export default function GuideTab() {
           Write them out yourself from your Real Book or by ear. It is not a workaround: copying
           out a form bar by bar is one of the more effective ways to learn it.
         </p>
+        <p style={{ margin: '0 0 10px' }}>
+          The exception is the <strong>form templates</strong>. The twelve-bar blues and rhythm
+          changes are shared idioms rather than anyone's composition — that is why contrafacts
+          exist, and why Oleo can be built on I Got Rhythm. Those ship, written as degrees so they
+          work in any key, and an empty grid offers whichever ones fit the tune's form. Treat one
+          as a starting point, never as the answer: C Jam Blues, Blue Monk and Billie's Bounce are
+          all “a 12-bar blues” and all three differ, which is exactly why they are separate tunes
+          here. The app keeps saying so until you tell it you have checked.
+        </p>
         <p style={{ margin: 0 }}>
           Open a tune and tap a bar in the grid. The grid comes pre-shaped from the tune's form —
           an AABA 32 gives you four eight-bar sections — so the shape is right before you start.

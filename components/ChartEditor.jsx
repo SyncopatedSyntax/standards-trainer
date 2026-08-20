@@ -14,9 +14,12 @@ import BarGrid from './BarGrid.jsx';
 import { btn, panel, labelCss } from './ui.jsx';
 import { ACCENT } from '../lib/tool.js';
 import {
-  chartFor, emptyChart, countBars, countFilled, flatten,
+  chartFor, emptyChart, countBars, countFilled, flatten, sectionLengths,
   setBar, copySection, priorSameLabel, parsePipedBars, fillBars,
+  applyTemplate, clearProvenance,
 } from '../lib/chart.js';
+import { FORM_TEMPLATES, templatesFor } from '../data/forms.js';
+import { parseKey } from '../lib/roman.js';
 
 const GLYPHS = ['Δ', 'ø', '°', '♭', '♯', '/', '−'];
 const SUFFIXES = ['maj7', 'm7', '7', '9', '13', 'sus4', 'alt'];
@@ -25,6 +28,7 @@ export default function ChartEditor({ tune, charts, onSetChart, note }) {
   const chart = useMemo(() => chartFor(charts, tune), [charts, tune]);
   const [focused, setFocused] = useState(null);      // { si, bi }
   const [confirmReset, setConfirmReset] = useState(false);
+  const [picking, setPicking] = useState(false);
   const [inset, setInset] = useState(0);
   const inputs = useRef(new Map());
   const caret = useRef(null);                        // { key, pos }
@@ -97,6 +101,14 @@ export default function ChartEditor({ tune, charts, onSetChart, note }) {
     inputs.current.get(key(next.si, next.bi))?.focus();
   };
 
+  // Which generic forms fit this tune — matched on its stated form, key and
+  // section shape, never on the tune itself. See data/forms.js.
+  const tuneKey = useMemo(() => parseKey(tune.key), [tune.key]);
+  const templates = useMemo(
+    () => templatesFor(tune, tuneKey, sectionLengths(chart)),
+    [tune, tuneKey, chart]);
+  const cameFrom = chart.from ? FORM_TEMPLATES.find(t => t.id === chart.from) : null;
+
   // Bars already written into the slice-1 notes field, if any. Reading them
   // back beats making anyone retype a form they have written out once.
   const importable = useMemo(() => parsePipedBars(note).filter(Boolean).length, [note]);
@@ -139,6 +151,46 @@ export default function ChartEditor({ tune, charts, onSetChart, note }) {
         Kept on this device only: charts are copyrighted, so the app ships the facts
         above and you supply the rest. Writing them out is half of learning the tune.
       </div>
+
+      {/* Provenance. A template that looked like a finished chart would be the
+          real hazard here — every blues is "a 12-bar blues" and they all
+          differ, so the banner stays until you say you have checked it. */}
+      {cameFrom && (
+        <div style={{ background: '#1c1733', border: `1px solid ${ACCENT}44`, borderRadius: '9px', padding: '10px', marginTop: '11px' }}>
+          <div style={{ fontSize: '11.5px', color: '#ddd', lineHeight: 1.6 }}>
+            Filled from <strong style={{ color: ACCENT }}>{cameFrom.name}</strong> — the generic form, not this tune's
+            changes. Play it against a chart or a recording and correct the bars where {tune.title} goes somewhere else.
+          </div>
+          <button onClick={() => onSetChart(tune.id, clearProvenance(chart))}
+            style={{ ...btn(false), width: '100%', marginTop: '8px' }}>✓ Checked it against the tune</button>
+        </div>
+      )}
+
+      {templates.length > 0 && filled === 0 && !picking && (
+        <button onClick={() => setPicking(true)} style={{ ...btn(false), width: '100%', marginTop: '10px' }}>
+          ⌗ Start from a form template
+        </button>
+      )}
+
+      {picking && (
+        <div style={{ marginTop: '10px', border: '1px solid #2a2840', borderRadius: '9px', padding: '10px' }}>
+          <div style={{ fontSize: '11px', color: '#999', lineHeight: 1.6, marginBottom: '9px' }}>
+            Generic forms in {tune.key}, not anyone's chart — the twelve-bar blues and rhythm changes are shared
+            idioms, which is why contrafacts exist. Pick one as a starting point, then correct it.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+            {templates.map(t => (
+              <button key={t.id}
+                onClick={() => { onSetChart(tune.id, applyTemplate(chart, t, tuneKey)); setPicking(false); }}
+                style={{ textAlign: 'left', background: '#0f0e17', border: '1px solid #2a2840', borderRadius: '9px', padding: '10px', cursor: 'pointer', touchAction: 'manipulation' }}>
+                <div style={{ fontSize: '12.5px', fontWeight: 800, color: ACCENT, fontFamily: 'var(--font-heading)' }}>{t.name}</div>
+                <div style={{ fontSize: '11px', color: '#999', marginTop: '3px', lineHeight: 1.5 }}>{t.blurb}</div>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setPicking(false)} style={{ ...btn(false), width: '100%', marginTop: '8px' }}>Cancel</button>
+        </div>
+      )}
 
       {importable > 0 && (
         <button onClick={() => onSetChart(tune.id, fillBars(chart, parsePipedBars(note)))}

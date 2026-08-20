@@ -142,6 +142,43 @@ lockfile, and Vercel builds from the lockfile — so a registry change is
 invisible until each consumer is repinned. It fails quietly. See
 `Focused-Chord-Trainer/docs/fretworks-rollout.md`.
 
+## Form templates — the one place harmony ships
+
+`data/forms.js` + `lib/roman.js`. Read the header comment in `forms.js` before
+touching either.
+
+**Why these can ship when the tunes cannot.** Every tune in the curriculum is
+still in copyright — the jazz repertoire is a 1930s–60s body of work, which is
+precisely the window copyright covers. The oldest, All of Me, was published in
+1931 and does not reach the *US* public domain until 2027, and being life+70
+there, the UK not for decades after. The twelve-bar blues and rhythm changes
+are a different kind of thing: shared idioms that predate and outlive any
+particular tune, which is why the whole practice of writing contrafacts works.
+
+Two rules keep it that way, both enforced by `verify.mjs`:
+
+1. **Templates are written only in roman numerals.** A sequence that renders in
+   all twelve keys is a form; a sequence in one key is a transcription. The
+   verify script rejects an absolute chord name anywhere in `forms.js`.
+2. **A template is never attached to a tune.** `templatesFor()` matches on the
+   tune's *stated form, key quality and section shape* — facts already in
+   `tunes.js` — and the user picks from what fits. The app never claims "these
+   are this tune's changes". Do not add a `template:` field to a tune; that
+   would be an assertion about its harmony, and it is what the copyright guard
+   in `verify.mjs` exists to stop.
+
+The second rule is also the pedagogy, and the more important half. C Jam Blues,
+Blue Monk and Billie's Bounce are all "a 12-bar blues" and all differ; the
+differences are why they are separate entries. So an applied template records
+`from: <templateId>` on the chart and the UI keeps a banner up — *the generic
+form, not this tune's changes* — until the user confirms they have checked it.
+An unlabelled template is indistinguishable from a chart you had actually
+verified, which is the real hazard here, not the legal one.
+
+`verify.mjs` re-derives the jazz blues in F, the minor blues in C minor and
+rhythm changes in B♭ against what a player would write by hand. That is the
+toolbox's standard applied to harmony the app generates.
+
 ## The bar grid
 
 `lib/chart.js` + `components/BarGrid.jsx` + `components/ChartEditor.jsx`.
@@ -171,6 +208,9 @@ Other things that are the way they are on purpose:
 
 ## Not built yet (in order)
 
+0. **More form templates** if they earn it — a modal vamp, a bossa 16. The bar
+   is the same: a shared idiom, expressible in degrees, matched on form rather
+   than named per tune.
 1. **Metronome + count-in**, unlocking an "at tempo" fifth skill.
 2. **Play-along over the entered changes** — the roadmap's shared backing
    engine; build it in `@fretworks/design` so every trainer benefits. The grid

@@ -11,6 +11,8 @@
 
 import { CORE_TUNES, TIERS, SKILLS, LETTER_FORMS } from '../data/tunes.js';
 import { defaultSections, countBars, emptyChart, parsePipedBars, fillBars } from '../lib/chart.js';
+import { FORM_TEMPLATES, templatesFor } from '../data/forms.js';
+import { parseKey, parseNumeral, renderBar } from '../lib/roman.js';
 
 let failures = 0;
 const check = (name, fn) => {
@@ -161,6 +163,96 @@ check('an import never changes the shape of the form', () => {
   const before = emptyChart(t);
   const after = fillBars(before, Array.from({ length: 200 }, (_, i) => `X${i}`));
   if (countBars(after) !== countBars(before)) fail('extra bars grew the grid — they must be dropped');
+});
+
+// ── The form templates ───────────────────────────────────────────────────
+// These are the one place harmonic content ships, so they carry the heaviest
+// checks: that they are genuinely generic (degrees only, working in all twelve
+// keys), and that they render the changes a musician would actually expect.
+console.log('\ndata/forms.js');
+
+check('templates are written only in roman numerals', () => {
+  // This is the check that keeps a template a *form* rather than somebody's
+  // chart. A sequence with an absolute chord name in it is a transcription.
+  for (const t of FORM_TEMPLATES) {
+    for (const bar of t.grid) {
+      for (const tok of bar.split(/\s+/).filter(Boolean)) {
+        if (/^[A-G][b♭#♯]?(m|maj|min|dim|aug|sus|Δ|ø|°|\d|$)/.test(tok)) {
+          fail(`${t.id}: "${tok}" is an absolute chord name, not a degree`);
+        }
+        parseNumeral(tok);   // throws if it is not a numeral at all
+      }
+    }
+  }
+});
+
+check('every template fills exactly the sections it claims', () => {
+  for (const t of FORM_TEMPLATES) {
+    const total = t.sections.reduce((a, b) => a + b, 0);
+    if (t.grid.length !== total) fail(`${t.id}: ${t.grid.length} bars for sections ${t.sections.join('+')} (${total})`);
+    if (!t.name || !t.blurb) fail(`${t.id}: missing a name or blurb`);
+    if (!['major', 'minor'].includes(t.tonality)) fail(`${t.id}: tonality "${t.tonality}"`);
+  }
+});
+
+check('a template renders in all twelve keys without throwing', () => {
+  const keys = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
+  for (const t of FORM_TEMPLATES) {
+    for (const name of keys) {
+      const k = parseKey(t.tonality === 'minor' ? name.replace(/^([A-G][b♭#♯]?)$/, '$1m') : name);
+      if (!k) fail(`${t.id}: could not parse key ${name}`);
+      for (const bar of t.grid) {
+        const out = renderBar(bar, k);
+        if (!out || /undefined|NaN/.test(out)) fail(`${t.id} in ${name}: bar rendered "${out}"`);
+      }
+    }
+  }
+});
+
+// Re-derive the two forms every player already knows by heart. If the
+// transposition engine or a template drifts, this is what catches it — the
+// same "check it against first principles" rule the theory trainers use.
+check('the jazz blues in F is the jazz blues in F', () => {
+  const k = parseKey('F');
+  const got = FORM_TEMPLATES.find(t => t.id === 'blues-jazz').grid.map(b => renderBar(b, k));
+  const want = ['F7', 'B♭7', 'F7', 'Cm7 F7', 'B♭7', 'B°7', 'F7', 'Am7 D7', 'Gm7', 'C7', 'F7 D7', 'Gm7 C7'];
+  got.forEach((g, i) => { if (g !== want[i]) fail(`bar ${i + 1}: got "${g}", expected "${want[i]}"`); });
+});
+
+check('the minor blues in C minor is the minor blues in C minor', () => {
+  const k = parseKey('Cm');
+  const got = FORM_TEMPLATES.find(t => t.id === 'blues-minor').grid.map(b => renderBar(b, k));
+  const want = ['Cm7', 'Cm7', 'Cm7', 'Cm7', 'Fm7', 'Fm7', 'Cm7', 'Cm7', 'A♭7', 'G7', 'Cm7', 'G7'];
+  got.forEach((g, i) => { if (g !== want[i]) fail(`bar ${i + 1}: got "${g}", expected "${want[i]}"`); });
+});
+
+check('rhythm changes in B♭ is rhythm changes in B♭', () => {
+  const k = parseKey('B♭');
+  const got = FORM_TEMPLATES.find(t => t.id === 'rhythm-changes').grid.map(b => renderBar(b, k));
+  const wantA = ['B♭ G7', 'Cm7 F7', 'B♭ G7', 'Cm7 F7', 'B♭7', 'E♭ E°7', 'B♭ G7', 'Cm7 F7'];
+  const wantB = ['D7', 'D7', 'G7', 'G7', 'C7', 'C7', 'F7', 'F7'];
+  const want = [...wantA, ...wantA, ...wantB, ...wantA];
+  got.forEach((g, i) => { if (g !== want[i]) fail(`bar ${i + 1}: got "${g}", expected "${want[i]}"`); });
+});
+
+check('templates are offered on form and key, never per tune', () => {
+  const offers = new Map();
+  for (const t of CORE_TUNES) {
+    const key = parseKey(t.key);
+    const secs = defaultSections(t).map(s => s.bars.length);
+    offers.set(t.id, templatesFor(t, key, secs).map(x => x.id));
+  }
+  // A modal tune has no tonic, so nothing can be transposed for it.
+  if (offers.get('maiden-voyage').length !== 0) fail('maiden-voyage is modal and must be offered nothing');
+  // A minor blues must not be offered the major templates, or the other way.
+  if (offers.get('mr-pc').join() !== 'blues-minor') fail(`mr-pc got ${offers.get('mr-pc')}`);
+  if (offers.get('c-jam-blues').includes('blues-minor')) fail('a major blues was offered the minor template');
+  if (offers.get('c-jam-blues').length !== 3) fail(`c-jam-blues got ${offers.get('c-jam-blues')}`);
+  // So What is an AABA 32 in a minor key: rhythm changes is major, so no.
+  if (offers.get('so-what').length !== 0) fail(`so-what got ${offers.get('so-what')}`);
+  if (!offers.get('oleo').includes('rhythm-changes')) fail('oleo is the rhythm-changes tune and was offered none');
+  // Through-composed tunes have no letter form to match.
+  if (offers.get('giant-steps').length !== 0) fail('giant-steps is through-composed');
 });
 
 console.log('\ndata/tunes.js — the guard');

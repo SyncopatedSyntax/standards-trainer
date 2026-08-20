@@ -13,6 +13,12 @@ app lays out from the form (an AABA 32 gives you four eight-bar sections). Real
 Book charts are under copyright, and copying out a form bar by bar is one of the
 better ways to learn it anyway. What you type stays on your device.
 
+The exception is the **generic forms** — the twelve-bar blues in its usual
+variations, and rhythm changes. Those are shared idioms rather than anyone's
+composition (it is why contrafacts exist), so they ship as degree templates that
+transpose to any key. An empty grid offers whichever ones fit the tune's form, as
+a starting point you then correct — never as the tune's actual changes.
+
 ## Develop
 
 ```sh
