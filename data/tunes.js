@@ -1,6 +1,8 @@
 // ── The core curriculum ───────────────────────────────────────────────────
-// Twenty-five tunes that actually get called at jams, ordered so each tier
-// only asks for one new thing.
+// Forty tunes that actually get called at jams, ordered so each tier only
+// asks for one new thing. (Twenty-five at launch; Zak added fifteen more in
+// October 2026 — mostly swing-era vocal standards, which landed at the end of
+// tier 3, plus a jump blues in tier 1 and a sixteen-bar minor blues in tier 2.)
 //
 // WHAT IS IN HERE, AND WHY IT STOPS THERE
 //
@@ -60,6 +62,20 @@ export const CORE_TUNES = [
       'The head is a chromatic climb. Play it on one string first — the G string works — so you hear the intervals instead of grabbing a shape, then move it into position.',
       'Monk is all placement and space. Let the long notes ring rather than damping them; the guitar’s decay does the work if you leave it alone.',
       'B♭ is a horn key. Learn it from a root-on-6 position and a root-on-5 position so you can start the form anywhere on the neck.',
+    ],
+  },
+  { id: 'boogie-woogie-bugle-boy', title: 'Boogie Woogie Bugle Boy', composer: 'Don Raye & Hughie Prince', key: 'C', form: 'blues', bars: 12,
+    feel: 'Jump blues / boogie', tempoLo: 150, tempoHi: 210, tier: 1,
+    why: 'A jump blues with a boogie bass underneath — the twelve-bar form at a dance-floor tempo.',
+    facts: [
+      'Written by Don Raye and Hughie Prince for the Andrews Sisters, who introduced it in the Abbott and Costello film Buck Privates, released in January 1941.',
+      'Their Decca record reached number six on the Billboard pop chart that spring, and the song was nominated for the Academy Award for Best Original Song.',
+      'It is filed as jump blues and turns up in lists of the best-known pop songs built on the twelve-bar blues. The 1941 sheet music is in C.',
+    ],
+    guitar: [
+      'The boogie figure is the groove. Walk it on the low E and A strings — root, 3rd, 5th, 6th, ♭7 and back down — and keep it going under a whole chorus before you play any melody.',
+      'At jump tempos, comp with short, damped two- and three-note shapes on the middle strings, and leave the low end to the boogie line or the bass player.',
+      'The Andrews Sisters sang in close three-part harmony. Copy it on the top three strings: one triad shape, moved along under the tune, is their sound on a guitar.',
     ],
   },
   { id: 'mr-pc', title: 'Mr. P.C.', composer: 'John Coltrane', key: 'Cm', form: 'blues', bars: 12,
@@ -157,6 +173,20 @@ export const CORE_TUNES = [
       'Comp a chorus playing nothing but the root on beat 1 until you stop losing where bar 1 is. Everything else can wait.',
       'The Miles version floats between a 6/4 and a 4/4 feel. Play the head over both and hear how the phrasing changes.',
       'Three is uncomfortable for a pick hand trained on four. Practise the strumming pattern away from the tune first.',
+    ],
+  },
+  { id: 'work-song', title: 'Work Song', composer: 'Nat Adderley', key: 'Fm', form: 'AB', bars: 16,
+    feel: 'Medium swing / soul jazz', tempoLo: 100, tempoHi: 150, tier: 2,
+    why: 'A sixteen-bar minor blues built on a call-and-response riff — the blues form stretched by four bars.',
+    facts: [
+      'Nat Adderley wrote it after watching a chain gang sing as they paved the street outside his family’s home in Florida. He recorded it on 25 and 27 January 1960 for Riverside, as the title track of his album Work Song.',
+      'It began as an instrumental. Oscar Brown Jr. added words on his album Sin & Soul, and the covers kept coming — Adderley called it his “Social Security song” for the royalties.',
+      'Charts disagree on its tonality: the Real Book writes F minor, Jamey Aebersold’s chart a dominant F7, and the soloists on the record use both. Ethan Hein’s answer is that it is simply in F blues.',
+    ],
+    guitar: [
+      'Wes Montgomery is the guitarist on the original record, cut the same week as his own The Incredible Jazz Guitar. Play the riff in octaves his way — thumb, with the string in between muted.',
+      'The riff is call and response. Play the call low on the 6th and 5th strings and answer with a short chord stab higher up the neck — one guitar can be both halves.',
+      'Because the tonality is ambiguous, try one chorus over F minor shapes and the next over F7 shapes, and listen to which one the head wants where.',
     ],
   },
   { id: 'maiden-voyage', title: 'Maiden Voyage', composer: 'Herbie Hancock', key: 'modal', form: 'AABA', bars: 32,
@@ -297,6 +327,179 @@ export const CORE_TUNES = [
       'E♭ is a horn key and it stays awkward on guitar for exactly as long as you keep avoiding it. This is the tune to stop avoiding it on.',
       'Long-form ii–Vs make it ideal for a one-position discipline: play a whole chorus without shifting, then a whole chorus shifting every four bars.',
       'It gets called at a brisk tempo. Learn the head slowly enough that it survives being sped up.',
+    ],
+  },
+
+  { id: 'exactly-like-you', title: 'Exactly Like You', composer: 'Jimmy McHugh & Dorothy Fields', key: 'C', form: 'AABA', bars: 32,
+    feel: 'Medium swing', tempoLo: 130, tempoHi: 190, tier: 3,
+    why: 'An AABA in C whose bridge is two dominants each falling to the chord a fifth below — the plainest kind of 32-bar song.',
+    facts: [
+      'Introduced by Harry Richman and Gertrude Lawrence in Lew Leslie’s International Revue, which opened in New York on 25 February 1930 and closed after 95 performances.',
+      'The revue flopped, but two of its McHugh and Fields songs outlived it: this one and On the Sunny Side of the Street.',
+      'Benny Goodman’s 1936 small-group record carried Lionel Hampton’s first recorded vocal, and did much to make it a jazz standard.',
+    ],
+    guitar: [
+      'The bridge is the same move twice: a dominant chord resolving down a fifth. Learn one dominant-seventh grip and slide it — the second half of the bridge is the first half, a step higher.',
+      'The A-section melody leaps — down in fourths, then up a fourth and down an octave. Find it in one position so the leaps go across strings instead of up and down one string.',
+      'Learn it next to On the Sunny Side of the Street: same writers, same year, same kind of bridge. Two tunes for one set of grips.',
+    ],
+  },
+  { id: 'on-the-sunny-side-of-the-street', title: 'On the Sunny Side of the Street', composer: 'Jimmy McHugh & Dorothy Fields', key: 'C', form: 'AABA', bars: 32,
+    feel: 'Medium swing', tempoLo: 110, tempoHi: 160, tier: 3,
+    why: 'Its opening is a surprise — the I, then a dominant on the 3rd, then the IV instead of where the ear expects. A tune that teaches you to listen.',
+    facts: [
+      'Introduced in Lew Leslie’s International Revue in 1930 — the same short-lived show that gave us Exactly Like You.',
+      'It is credited to McHugh and Fields, but a long-running rumour says Fats Waller wrote the melody and sold it for quick cash. Fields’s lyric has never been in doubt; the music’s authorship has never been settled.',
+      'It opens the way Georgia on My Mind does, I to III7 — then lands on IV rather than the chord that III7 points at.',
+    ],
+    guitar: [
+      'In C the III7 is E7 and the surprise landing is F. Take an E7 grip with its root on the 5th string at the 7th fret and the F a fret above — the surprise is one fret under your hand.',
+      'The bridge is the same as Exactly Like You’s: a dominant falling to its IV, then a II7 falling to V7. Learn the two tunes as a pair.',
+      'The melody spans an octave and a third. Play it in one position on the top strings, then take it up an octave — the high register is where it sings on the guitar.',
+    ],
+  },
+  { id: 'bye-bye-blackbird', title: 'Bye Bye Blackbird', composer: 'Ray Henderson & Mort Dixon', key: 'F', form: 'AABA', bars: 32,
+    feel: 'Medium swing', tempoLo: 110, tempoHi: 160, tier: 3,
+    why: 'Almost all I–IV and ii–V–I, with a melody inside an octave — a Miles Davis tune you can learn in an afternoon.',
+    facts: [
+      'Written in 1926 by Ray Henderson (music) and Mort Dixon (words). Gene Austin had the hit that year, twelve weeks on the charts.',
+      'Miles Davis recorded it in June 1956 for ’Round About Midnight, released by Columbia in 1957, with John Coltrane, Red Garland, Paul Chambers and Philly Joe Jones.',
+      'The melody stays inside less than an octave. Its one surprise is a downward tritone leap three bars from the end.',
+    ],
+    guitar: [
+      'In the later sections the half-diminished chord is often replaced by a minor 6th built a minor third higher — and the two are the same four notes. On guitar that is one grip with two names.',
+      'With a range under an octave, the whole head fits in one position without a shift. Find that position, then find it again an octave up the neck.',
+      'Comp it in two places — around the 1st fret and around the 8th — so the next chord is never more than a fret or two away.',
+    ],
+  },
+  { id: 'if-i-had-you', title: 'If I Had You', composer: 'Ted Shapiro, Jimmy Campbell & Reg Connelly', key: 'Bb', form: 'AABA', bars: 32,
+    feel: 'Medium swing or ballad', tempoLo: 90, tempoHi: 160, tier: 3,
+    why: 'A major AABA whose bridge sits in D minor — a false key change you have to hear coming.',
+    facts: [
+      'Published in 1928 under the name “Irving King” — the pen name of the British team Jimmy Campbell and Reg Connelly — with Ted Shapiro, Sophie Tucker’s pianist and musical director.',
+      'Rudy Vallée and Al Bowlly both had hits with it in 1929. Frank Sinatra swung it on A Swingin’ Affair in 1957.',
+      'The bridge is a minor ii–V–i in D minor played three times, then a circle of fifths back to the home key’s V7 — a false key change rather than a real one.',
+    ],
+    guitar: [
+      'The bridge is one minor ii–V–i three times. Learn a single set of grips for it — half-diminished, dominant, minor — and play it three times without moving your hand.',
+      'The opening moves like Cherokee’s: from the tonic, through a ii–V into the IV, then to a minor iv. Hold the top note and change only the inner voices, so you hear a line move inside the chord.',
+    ],
+  },
+  { id: 'dream-a-little-dream-of-me', title: 'Dream a Little Dream of Me', composer: 'Fabian Andre, Wilbur Schwandt & Gus Kahn', key: 'G', form: 'AABA', bars: 32,
+    feel: 'Medium-slow swing', tempoLo: 90, tempoHi: 140, tier: 3,
+    why: 'A gentle AABA with a clear bridge — slow enough to think, and everybody in the room can sing it.',
+    facts: [
+      'Music by Fabian Andre and Wilbur Schwandt, words by Gus Kahn. The first records came in February 1931, from Ozzie Nelson’s band and from Wayne King’s orchestra.',
+      'Its biggest hit came 37 years later: Cass Elliot sang it with the Mamas & the Papas in 1968, and it went to number one in Australia.',
+    ],
+    guitar: [
+      'Work it up as a chord melody: tune on the top string, a three-note voicing under each new melody note, and let it ring.',
+      'Comp it in two first — thumb on a bass note on 1 and 3, a short chord on 2 and 4 — then go to four to the bar for the last chorus.',
+    ],
+  },
+  { id: 'frim-fram-sauce', title: 'The Frim Fram Sauce', composer: 'Joe Ricardel & Redd Evans', key: 'Bb', form: 'AABA', bars: 32,
+    feel: 'Medium swing', tempoLo: 110, tempoHi: 160, tier: 3,
+    why: 'A jive novelty that is really a trio feature — the King Cole Trio sound, piano, guitar and bass, in one tune.',
+    facts: [
+      'Written in 1945 by Joe Ricardel (music) and Redd Evans (words). The King Cole Trio recorded it in Los Angeles on 11 October 1945 and took it to number 19 on the Billboard chart.',
+      'The trio then was Nat Cole on piano, Oscar Moore on guitar and Johnny Miller on bass — no drums at all.',
+      'Ella Fitzgerald and Louis Armstrong cut it as a duet in 1946, leaning hard on the scat singing.',
+    ],
+    guitar: [
+      'Oscar Moore’s chair is the one to study: with no drummer, the guitar keeps time with the bass. Comp in short, even quarter notes on the middle strings and leave room for the piano.',
+      'Learn it next to No Moon at All — same lyricist, same trio, and between them a major and a minor AABA to comp through.',
+    ],
+  },
+  { id: 'if-i-could-be-with-you', title: 'If I Could Be with You (One Hour Tonight)', composer: 'James P. Johnson & Henry Creamer', key: 'Eb', form: 'ABAC', bars: 32,
+    feel: 'Medium swing', tempoLo: 110, tempoHi: 170, tier: 3,
+    why: 'ABAC, major throughout, home round the circle of fifths and a II7–V7–I to finish — the 1920s song form in its plainest dress.',
+    facts: [
+      'Music by the stride pianist James P. Johnson, words by Henry Creamer, published in 1926. Eva Taylor made the first record, with Clarence Williams’ Blue Five, in 1927.',
+      'In 1930 McKinney’s Cotton Pickers took it to number one and made it their theme song, and Louis Armstrong’s Okeh record charted the same year.',
+      'It was one of Johnson’s biggest hits, and its royalties helped carry him through the Depression.',
+    ],
+    guitar: [
+      'The way back from the B section is a chain of dominants round the circle of fifths. Alternate a root-on-6 grip and a root-on-5 grip as you go and your hand barely moves.',
+      'E♭ is a horn key that sits well on guitar with root-on-5 grips around the 6th fret. Learn it there before you look for anything nearer the nut.',
+    ],
+  },
+  { id: 'l-o-v-e', title: 'L-O-V-E', composer: 'Bert Kaempfert & Milt Gabler', key: 'G', form: 'ABAC', bars: 32,
+    feel: 'Medium-up swing', tempoLo: 140, tempoHi: 180, tier: 3,
+    why: 'A spelled-out love song that steps up a half step, then another, near the end — practice at changing key without stopping.',
+    facts: [
+      'Bert Kaempfert wrote the music; it first appeared as an instrumental on his 1964 album Blue Midnight. Milt Gabler wrote the words.',
+      'Nat King Cole recorded it on 3 June 1964. It became the title track of L-O-V-E, his last studio album, released in 1965 shortly before his death that February.',
+      'Cole also sang it in other languages for international editions of the album — in French it became “Je ne repartirai pas”.',
+    ],
+    guitar: [
+      'Cole’s version goes up a half step and then another. Learn the changes with movable grips only, no open strings, so each key change is your hand sliding up one fret.',
+      'The melody comes in short phrases with space between them. Comp into the gaps with light four-to-the-bar chords and get out of the way when the tune comes back.',
+    ],
+  },
+  { id: 'blue-skies', title: 'Blue Skies', composer: 'Irving Berlin', key: 'G', form: 'AABA', bars: 32,
+    feel: 'Medium swing', tempoLo: 140, tempoHi: 200, tier: 3,
+    why: 'Each A section starts in the relative minor and walks to the major over a falling chromatic bass — minor and major in eight bars.',
+    facts: [
+      'Irving Berlin wrote it in 1926, and Belle Baker had it put into Rodgers and Hart’s musical Betsy — to their annoyance. On opening night, 28 December 1926, the audience demanded some two dozen encores.',
+      'On the last of them Baker reportedly forgot the words, and Berlin sang them for her from his seat in the front row. Betsy itself closed after 39 performances.',
+      'Al Jolson sang it in The Jazz Singer (1927), the first feature film with synchronised singing.',
+    ],
+    guitar: [
+      'The A-section harmony rides a chromatic bass line falling a fret at a time. Voice it with the bass on the 6th or 5th string moving down and the top notes held — the line does the work.',
+      'In G each A section starts on E minor. Learn the walk from that chord in one position, then again five frets up, so you can play it wherever the melody sits.',
+      'The bridge is simpler and busier, rising to the dominant and back. Lighten the comping there so the contrast with the A sections is audible.',
+    ],
+  },
+  { id: 'no-moon-at-all', title: 'No Moon at All', composer: 'David Mann & Redd Evans', key: 'Em', form: 'AABA', bars: 32,
+    feel: 'Medium swing', tempoLo: 120, tempoHi: 170, tier: 3,
+    why: 'A minor-key AABA at a relaxed swing — the cool late-1940s vocal sound, and a break from the major-key tunes.',
+    facts: [
+      'Written in 1947 by David Mann (music) and Redd Evans (words); Doris Day sang the first vocal version.',
+      'The King Cole Trio recorded it in New York on 3 November 1947.',
+      'Redd Evans also wrote the words to The Frim Fram Sauce, so both lyrics ended up in the King Cole Trio’s book.',
+    ],
+    guitar: [
+      'E minor is home turf on guitar: the tonic sits open and at the 12th fret on the 6th string, and at the 7th fret on the 5th. Pick one position and stay in it for a whole chorus.',
+      'Keep the comping cool and sparse — short, damped chords on 2 and 4 — and let the bass carry the line.',
+    ],
+  },
+  { id: 'softly-as-in-a-morning-sunrise', title: 'Softly, As in a Morning Sunrise', composer: 'Sigmund Romberg & Oscar Hammerstein II', key: 'Cm', form: 'AABA', bars: 32,
+    feel: 'Medium swing or latin', tempoLo: 140, tempoHi: 220, tier: 3,
+    why: 'Minor A sections, a bridge in the relative major — the minor AABA every jam knows.',
+    facts: [
+      'From Romberg and Hammerstein’s operetta The New Moon (1928), where it was written as a tango, in 2/4.',
+      'Its A sections are the minor version of I–VI–ii–V; the bridge starts the same way in the relative major and ends on a deceptive cadence.',
+      'John Coltrane’s quartet with McCoy Tyner recorded it at the Village Vanguard in November 1961. The open, modal way most players take it now traces back to that.',
+    ],
+    guitar: [
+      'Many players take the A sections latin and swing the bridge. Practise the switch: straight-eighth comping on the minor chords, then four to the bar when the bridge arrives.',
+      'Over the A sections, the C minor pentatonic box with its root at the 8th fret of the 6th string covers the tune. Add the 2nd and 6th for the modal colour modern versions go for.',
+    ],
+  },
+  { id: 'im-in-the-mood-for-love', title: "I'm in the Mood for Love", composer: 'Jimmy McHugh & Dorothy Fields', key: 'C', form: 'AABA', bars: 32,
+    feel: 'Ballad', tempoLo: 60, tempoHi: 100, tier: 3,
+    why: 'A first ballad: an AABA built on I–ii–V, moving by step, with time to hear every chord.',
+    facts: [
+      'Written for the 1935 film Every Night at Eight, where Frances Langford introduced it; it became her signature song. Little Jack Little’s record went to number one.',
+      'James Moody recorded it in Sweden in 1949. Eddie Jefferson later set words to Moody’s improvised solo, and “Moody’s Mood for Love” became a vocalese classic.',
+      'Fields and McHugh were the team behind Exactly Like You and On the Sunny Side of the Street, five years earlier.',
+    ],
+    guitar: [
+      'At ballad tempo, play it as a chord melody first: tune on top, a chord under each new melody note, and let the voicings ring.',
+      'The melody moves mostly by step. Play it on one string to hear the steps, then in position; the big drop at the end of each A section is where to land on a chord tone.',
+    ],
+  },
+  { id: 'stars-fell-on-alabama', title: 'Stars Fell on Alabama', composer: 'Frank Perkins & Mitchell Parish', key: 'G', form: 'AABA', bars: 32,
+    feel: 'Ballad', tempoLo: 60, tempoHi: 100, tier: 3,
+    why: 'A slow AABA ballad — the place to learn to play a melody, not just a progression.',
+    facts: [
+      'The title refers to the Leonid meteor shower seen over Alabama in November 1833, “the night the stars fell”, and seems to have been borrowed from Carl Carmer’s 1934 book of the same name.',
+      'Guy Lombardo’s record, made in August 1934, spent four weeks at number one. Benny Goodman cut the first jazz version on 11 September 1934.',
+      'The phrase went onto Alabama’s licence plates in 2002.',
+    ],
+    guitar: [
+      'Play it as a solo chord melody: tune on the top string, a bass note with the thumb, and nothing in a hurry.',
+      'Stan Getz recorded it in G. Practise holding a melody note with vibrato rather than picking it again — that is the difference between a ballad and a slow tune.',
     ],
   },
 

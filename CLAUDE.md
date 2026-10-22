@@ -35,7 +35,7 @@ Prefix **`js_`** (`lib/store.js`). Load-bearing twice: `ProgressBackup` exports
 by prefix, and the shell's `/backup` screen sweeps every key on the origin — so
 this app is covered by both with no extra wiring.
 
-- `data/tunes.js` → `CORE_TUNES` (25, facts only), `TIERS`, `SKILLS`.
+- `data/tunes.js` → `CORE_TUNES` (40, facts only), `TIERS`, `SKILLS`.
   Reference data, never written to. **Array order is the curriculum** — the
   verify script asserts tiers never go backwards. Each tune also carries
   `facts[]` and `guitar[]` — see *Facts and guitar notes* below.
@@ -54,10 +54,10 @@ this app is covered by both with no extra wiring.
 - `js_custom` — tunes the user added, same shape plus `custom: true`.
 
 **Charts are built lazily too.** `chartFor()` returns the blank layout for a
-tune with nothing stored rather than writing one — browsing 25 tunes must not
-fill storage with 25 empty grids. `defaultSections()` derives that layout from
+tune with nothing stored rather than writing one — browsing 40 tunes must not
+fill storage with 40 empty grids. `defaultSections()` derives that layout from
 facts the tune already carries, and ships every bar empty; `verify.mjs` asserts
-both (the right bar count, and no pre-filled bar) for all 25.
+both (the right bar count, and no pre-filled bar) for every tune.
 
 **Cards are created lazily, not on activation.** `dueCards()` treats a missing
 `js_srs` entry as fresh-and-due, so activating a tune writes nothing to the
@@ -161,6 +161,23 @@ wrote the C Jam Blues melody) the text says so rather than picking a side.
 Do not add a fact you have not checked; a plausible invention is worse here
 than a gap, because nothing downstream can catch it.
 
+**The October 2026 additions** (fifteen tunes Zak asked for: the swing-era
+vocal standards at the end of tier 3, Boogie Woogie Bugle Boy in tier 1, Work
+Song in tier 2) were researched the same way, through web search, since the
+session's network could not reach Wikipedia or jazzstandards.com directly. Keys
+are the ones Zak gave where he gave one; otherwise the original published key
+(jazzstandards.com's analysis, or the sheet music). Three form calls are weaker
+than the rest and worth checking against a chart:
+- **L-O-V-E** as ABAC 32 — no source states the form; it is read from the
+  song's structure (the "Love is all that I can give to you" phrase returns to
+  the opening).
+- **Work Song** as AB 16 — sixteen bars is sourced; splitting it 8 + 8 is a
+  layout choice for the grid, not a claim from a source.
+- **No Moon at All** as AABA 32 — supported only by weak sources.
+Boogie Woogie Bugle Boy is filed as a 12-bar blues on the strength of
+Wikipedia listing it among well-known twelve-bar songs; its sheet music key is
+C.
+
 `verify.mjs` catches the mechanical failures only: both fields present, at
 least two entries each, nothing under 40 characters (a one-clause note is
 almost always an unfinished placeholder), and every tune having at least one
@@ -178,11 +195,14 @@ pipe-delimited bars *and* three or more absolute chord symbols in a row.
 `data/forms.js` + `lib/roman.js`. Read the header comment in `forms.js` before
 touching either.
 
-**Why these can ship when the tunes cannot.** Every tune in the curriculum is
-still in copyright — the jazz repertoire is a 1930s–60s body of work, which is
-precisely the window copyright covers. The oldest, All of Me, was published in
-1931 and does not reach the *US* public domain until 2027, and being life+70
-there, the UK not for decades after. The twelve-bar blues and rhythm changes
+**Why these can ship when the tunes cannot.** The curriculum is a 1920s–60s
+body of work. In the US the 95-year term has now freed everything published in
+1930 or earlier — Blue Skies, Bye Bye Blackbird, Exactly Like You and a few
+more — but copyright elsewhere runs for the writers' lives plus seventy years
+(Irving Berlin died in 1989, so the UK protects his songs until the end of
+2059), and a Real Book *chart* is a copyright of its own. So the rule does not
+soften for the old tunes: no tune's changes ship, whatever its date. The
+twelve-bar blues and rhythm changes
 are a different kind of thing: shared idioms that predate and outlive any
 particular tune, which is why the whole practice of writing contrafacts works.
 
