@@ -12,7 +12,7 @@ import { chartFor, countBars, countFilled } from '../lib/chart.js';
 
 const slug = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 
-export default function TunesTab({ tunes, byId, active, srs, notes, charts, skills, onActivate, onDeactivate, onSetNote, onSetChart, onAddTune, onRemoveCustom, onGrade, scrollRef, openId, onOpened }) {
+export default function TunesTab({ tunes, byId, active, srs, notes, charts, skills, onActivate, onDeactivate, onSetNote, onSetChart, onAddTune, onRemoveCustom, onGrade, onUngrade, scrollRef, openId, onOpened }) {
   const [sel, setSel] = useState(null);
   // Open on your own repertoire once you have one. The core path is the right
   // first screen exactly once — after that, "what am I working on" is the
@@ -76,7 +76,7 @@ export default function TunesTab({ tunes, byId, active, srs, notes, charts, skil
   if (tune) {
     return <TuneDetail tune={tune} active={active} srs={srs} notes={notes} charts={charts} skills={skills}
       onBack={back} onActivate={onActivate} onDeactivate={onDeactivate}
-      onSetNote={onSetNote} onSetChart={onSetChart} onGrade={onGrade} onRemoveCustom={onRemoveCustom} />;
+      onSetNote={onSetNote} onSetChart={onSetChart} onGrade={onGrade} onUngrade={onUngrade} onRemoveCustom={onRemoveCustom} />;
   }
 
   const saveNew = () => {

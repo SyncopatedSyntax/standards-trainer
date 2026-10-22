@@ -5,9 +5,9 @@ import { useState } from 'react';
 import { btn, panel, labelCss, TextArea } from './ui.jsx';
 import ChartEditor from './ChartEditor.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { cardId, isSkillSolid, todayStr, tuneIsReady, relativeDay } from '../lib/srs.js';
+import { cardId, isSkillSolid, todayStr, tuneIsReady, relativeDay, gradedToday } from '../lib/srs.js';
 
-export default function TuneDetail({ tune, active, srs, notes, charts, skills, onBack, onActivate, onDeactivate, onSetNote, onSetChart, onGrade, onRemoveCustom }) {
+export default function TuneDetail({ tune, active, srs, notes, charts, skills, onBack, onActivate, onDeactivate, onSetNote, onSetChart, onGrade, onUngrade, onRemoveCustom }) {
   const today = todayStr();
   const isActive = active.includes(tune.id);
   const ready = isActive && tuneIsReady(srs, tune.id, skills);
@@ -76,8 +76,16 @@ export default function TuneDetail({ tune, active, srs, notes, charts, skills, o
           <div style={labelCss}>The four skills</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {skills.map(s => {
-              const card = srs[cardId(tune.id, s.id)];
+              const id = cardId(tune.id, s.id);
+              const card = srs[id];
               const solid = isSkillSolid(card);
+              // Answered today: the chosen button stays lit and a line says it
+              // was saved. Tapping again does not grade twice — the other button
+              // changes today's answer instead (lib/srs.js gradeCard).
+              const done = gradedToday(card, today);
+              const pick = (ok, color, ink) => done && card.lastOk === ok
+                ? { ...btn(true, color), flex: 1, background: color, color: ink, borderColor: color, fontWeight: 800 }
+                : { ...btn(false, color), flex: 1, color: ok ? '#00b894' : '#ff8f8f', borderColor: color + '44' };
               return (
                 <div key={s.id} style={{ background: '#0f0e17', border: `1px solid ${solid ? ACCENT + '55' : '#2a2840'}`, borderRadius: '9px', padding: '9px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -87,9 +95,17 @@ export default function TuneDetail({ tune, active, srs, notes, charts, skills, o
                   </div>
                   <div style={{ fontSize: '11px', color: '#888', margin: '4px 0 7px', lineHeight: 1.5 }}>{s.blurb}</div>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <button onClick={() => onGrade(cardId(tune.id, s.id), true)} style={{ ...btn(false, '#00b894'), flex: 1, color: '#00b894', borderColor: '#00b89444' }}>Got it</button>
-                    <button onClick={() => onGrade(cardId(tune.id, s.id), false)} style={{ ...btn(false, '#ff6363'), flex: 1, color: '#ff8f8f', borderColor: '#ff636344' }}>Shaky</button>
+                    <button onClick={() => onGrade(id, true)} aria-pressed={done && card.lastOk === true} style={pick(true, '#00b894', '#04241c')}>{done && card.lastOk ? '✓ Got it' : 'Got it'}</button>
+                    <button onClick={() => onGrade(id, false)} aria-pressed={done && card.lastOk === false} style={pick(false, '#ff6363', '#2a0808')}>{done && !card.lastOk ? '✓ Shaky' : 'Shaky'}</button>
                   </div>
+                  {done && (
+                    <div key={String(card.lastOk)} className="st-pop" role="status" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '7px', fontSize: '11px', color: '#aaa', lineHeight: 1.5 }}>
+                      <span style={{ flex: 1 }}>
+                        <b style={{ color: card.lastOk ? '#00b894' : '#ff8f8f' }}>Saved for today</b> — next review {relativeDay(card.nextDue, today)}. Tap the other button to change it.
+                      </span>
+                      <button onClick={() => onUngrade(id)} style={{ ...btn(false), minHeight: '40px', padding: '6px 12px', color: '#bbb' }}>Undo</button>
+                    </div>
+                  )}
                 </div>
               );
             })}

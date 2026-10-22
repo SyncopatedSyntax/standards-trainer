@@ -14,7 +14,7 @@ import StandardsHeader from './components/StandardsHeader.jsx';
 import { TOOL, ACCENT } from './lib/tool.js';
 import { CORE_TUNES, SKILLS } from './data/tunes.js';
 import { K_ACTIVE, K_SRS, K_NOTES, K_CUSTOM, K_CHARTS, read, write } from './lib/store.js';
-import { updateSRS, cardId } from './lib/srs.js';
+import { gradeCard, ungradeCard, cardId } from './lib/srs.js';
 import TodayTab from './tabs/TodayTab.jsx';
 import TunesTab from './tabs/TunesTab.jsx';
 import ProgressTab from './tabs/ProgressTab.jsx';
@@ -87,8 +87,16 @@ export default function App() {
     setSrs(s); write(K_SRS, s);
   }, []);
 
+  // gradeCard makes a repeat answer on the same day replace the first rather
+  // than stack on it — see lib/srs.js.
   const grade = useCallback((id, correct) => {
-    const s = { ...srsRef.current, [id]: updateSRS(srsRef.current[id], correct) };
+    const s = { ...srsRef.current, [id]: gradeCard(srsRef.current[id], correct) };
+    setSrs(s); write(K_SRS, s);
+  }, []);
+  const ungrade = useCallback(id => {
+    const back = ungradeCard(srsRef.current[id]);
+    const s = { ...srsRef.current };
+    if (back) s[id] = back; else delete s[id];
     setSrs(s); write(K_SRS, s);
   }, []);
 
@@ -125,6 +133,9 @@ export default function App() {
       button,a,label,[role=button]{touch-action:manipulation;-webkit-user-select:none;user-select:none;}
       input,textarea,select{font-size:16px!important;}
       :root{--sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom);}
+      @keyframes stPop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+      .st-pop{animation:stPop .22s ease-out}
+      @media (prefers-reduced-motion:reduce){.st-pop{animation:none}}
     `;
     document.head.appendChild(style);
 
@@ -212,8 +223,8 @@ export default function App() {
 
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'none' }}>
         <div style={{ paddingBottom: 'max(32px,env(safe-area-inset-bottom))' }}>
-          {tab === 'today' && <TodayTab {...shared} onGrade={grade} onGoTunes={() => goTab('tunes')} scrollRef={scrollRef} />}
-          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onSetChart={setChart} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
+          {tab === 'today' && <TodayTab {...shared} onGrade={grade} onUngrade={ungrade} onGoTunes={() => goTab('tunes')} scrollRef={scrollRef} />}
+          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onSetChart={setChart} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
           {tab === 'progress' && <ProgressTab {...shared} onGoTunes={() => goTab('tunes')} onGoTune={goTune} />}
           {tab === 'guide' && <GuideTab />}
           {tab === 'settings' && <SettingsTab />}

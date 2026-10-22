@@ -13,6 +13,7 @@ import { CORE_TUNES, TIERS, SKILLS, LETTER_FORMS } from '../data/tunes.js';
 import { defaultSections, countBars, emptyChart, parsePipedBars, fillBars } from '../lib/chart.js';
 import { FORM_TEMPLATES, templatesFor } from '../data/forms.js';
 import { parseKey, parseNumeral, renderBar } from '../lib/roman.js';
+import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays } from '../lib/srs.js';
 
 let failures = 0;
 const check = (name, fn) => {
@@ -280,6 +281,52 @@ check('templates are offered on form and key, never per tune', () => {
   if (!offers.get('oleo').includes('rhythm-changes')) fail('oleo is the rhythm-changes tune and was offered none');
   // Through-composed tunes have no letter form to match.
   if (offers.get('giant-steps').length !== 0) fail('giant-steps is through-composed');
+});
+
+// ── Grading ──────────────────────────────────────────────────────────────
+// Zak found that tapping Got it several times kept pushing the next review
+// further out: every tap was a fresh SM-2 success. One answer per card per
+// day now; these pin that, and that the engine itself is unchanged.
+console.log('\nlib/srs.js — grading');
+
+check('tapping Got it again the same day counts once', () => {
+  const today = todayStr();
+  const once = gradeCard(undefined, true, today);
+  let many = once;
+  for (let i = 0; i < 5; i++) many = gradeCard(many, true, today);
+  for (const k of ['ef', 'interval', 'reps', 'nextDue', 'seen']) if (many[k] !== once[k]) fail(`${k}: ${many[k]} after six taps, ${once[k]} after one`);
+  // From a card already at reps 2 (six-day interval), as in the bug report.
+  const mature = { ef: 2.5, interval: 6, reps: 2, nextDue: today, seen: 2 };
+  const a = gradeCard(mature, true, today), b = gradeCard(gradeCard(gradeCard(mature, true, today), true, today), true, today);
+  if (a.nextDue !== b.nextDue || a.interval !== b.interval) fail(`mature card: one tap → ${a.interval}d, three taps → ${b.interval}d`);
+});
+
+check('changing your mind the same day replaces the answer', () => {
+  const today = todayStr();
+  const mature = { ef: 2.5, interval: 6, reps: 2, nextDue: today, seen: 2 };
+  const flip = gradeCard(gradeCard(mature, true, today), false, today);
+  const shaky = gradeCard(mature, false, today);
+  for (const k of ['ef', 'interval', 'reps', 'nextDue', 'seen']) if (flip[k] !== shaky[k]) fail(`Got it then Shaky: ${k} ${flip[k]}, Shaky alone: ${shaky[k]}`);
+  if (flip.lastOk !== false) fail('lastOk should record the latest answer');
+});
+
+check('the next day builds on today, and the engine is unchanged', () => {
+  const today = todayStr(), tomorrow = addDays(today, 1);
+  const d1 = gradeCard(undefined, true, today), d2 = gradeCard(d1, true, tomorrow);
+  if (d2.reps !== 2 || d2.seen !== 2) fail(`two days of Got it: reps ${d2.reps}, seen ${d2.seen}`);
+  const plain = updateSRS(updateSRS(undefined, true), true);
+  if (d2.interval !== plain.interval || d2.ef !== plain.ef) fail('gradeCard must apply SM-2 exactly as updateSRS does');
+  if (d2.prev?.prev !== undefined) fail('prev must not nest — it holds one earlier state, not a history');
+});
+
+check('undo takes back only today, and a first answer undoes to never-reviewed', () => {
+  const today = todayStr(), yesterday = addDays(today, -1);
+  if (ungradeCard(gradeCard(undefined, true, today), today) !== null) fail('undoing a first-ever answer should leave no card');
+  const old = { ef: 2.4, interval: 6, reps: 2, nextDue: today, seen: 3, last: yesterday };
+  const back = ungradeCard(gradeCard(old, false, today), today);
+  for (const k of Object.keys(old)) if (back[k] !== old[k]) fail(`undo changed ${k}`);
+  if (ungradeCard(old, today) !== old) fail('a card not graded today must be left alone');
+  if (!gradedToday(gradeCard(old, true, today), today) || gradedToday(old, today)) fail('gradedToday');
 });
 
 console.log('\ndata/tunes.js — the guard');

@@ -4,19 +4,50 @@
 // Chord Trainer: grading rewrites the schedule, and without a snapshot the
 // list would reorder underneath you mid-session.
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { btn, panel, labelCss, EmptyState } from '../components/ui.jsx';
 import BarGrid from '../components/BarGrid.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { dueCards, todayStr } from '../lib/srs.js';
+import { dueCards, todayStr, relativeDay } from '../lib/srs.js';
 import { chartFor, isChartEmpty } from '../lib/chart.js';
 
-export default function TodayTab({ tunes, byId, active, srs, notes, charts, skills, onGrade, onGoTunes }) {
+// What you just answered, floating at the foot of the screen. The card has
+// already moved on by the time you read it, so without this a tap leaves no
+// trace of whether it registered — or of what it did to the schedule.
+function GradedToast({ toast, srs, onUndo }) {
+  if (!toast) return null;
+  const when = relativeDay(srs[toast.id]?.nextDue);
+  return (
+    <div key={toast.n} className="st-pop" role="status" style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 'calc(16px + env(safe-area-inset-bottom))', width: 'calc(100% - 24px)', maxWidth: '420px', zIndex: 50, display: 'flex', alignItems: 'center', gap: '10px', background: '#1a1830', border: `1px solid ${toast.correct ? '#00b89466' : '#ff636366'}`, borderRadius: '12px', padding: '10px 12px', boxShadow: '0 8px 30px #0008' }}>
+      <span style={{ fontSize: '18px' }}>{toast.correct ? '✓' : '↺'}</span>
+      <span style={{ flex: 1, fontSize: '12px', color: '#ddd', lineHeight: 1.45 }}>
+        <b style={{ color: toast.correct ? '#00b894' : '#ff8f8f' }}>{toast.correct ? 'Got it' : 'Shaky'}</b> — {toast.label}, back {when}.
+      </span>
+      <button onClick={onUndo} style={{ ...btn(false), minHeight: '40px', padding: '6px 12px', color: '#ddd' }}>Undo</button>
+    </div>
+  );
+}
+
+export default function TodayTab({ tunes, byId, active, srs, notes, charts, skills, onGrade, onUngrade, onGoTunes }) {
   // Snapshot: computed once, from the schedule as it stood when the tab opened.
   const [queue] = useState(() => dueCards(srs, active, skills));
   const [done, setDone] = useState({});   // cardId -> true|false, this session
+  const [toast, setToast] = useState(null);
+  const lockUntil = useRef(0);
   const skillById = useMemo(() => new Map(skills.map(s => [s.id, s])), [skills]);
   const today = todayStr();
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
+  const undo = () => {
+    if (!toast) return;
+    onUngrade(toast.id);
+    setDone(d => { const { [toast.id]: _gone, ...rest } = d; return rest; });
+    setToast(null);
+  };
+  const toastEl = <GradedToast toast={toast} srs={srs} onUndo={undo} />;
 
   const remaining = queue.filter(c => done[c.id] === undefined);
   const current = remaining[0];
@@ -43,6 +74,7 @@ export default function TodayTab({ tunes, byId, active, srs, notes, charts, skil
           </div>
         </div>
         <button onClick={onGoTunes} style={{ ...btn(false), width: '100%', marginTop: '12px', padding: '10px' }}>Browse tunes</button>
+        {toastEl}
       </div>
     );
   }
@@ -58,9 +90,15 @@ export default function TodayTab({ tunes, byId, active, srs, notes, charts, skil
   const skillIdx = skills.findIndex(s => s.id === current.skill);
   const tip = tune?.guitar?.length ? tune.guitar[Math.max(0, skillIdx) % tune.guitar.length] : null;
 
+  // The card swaps the instant you answer, so a quick double tap would land
+  // the second tap on the NEXT card and grade it unseen. Ignore taps for a
+  // moment after each answer.
   const answer = correct => {
+    if (Date.now() < lockUntil.current) return;
+    lockUntil.current = Date.now() + 500;
     onGrade(current.id, correct);
     setDone(d => ({ ...d, [current.id]: correct }));
+    setToast({ id: current.id, correct, label: `${skill?.label || current.skill} on ${tune?.title || current.tuneId}`, n: Date.now() });
   };
 
   return (
@@ -119,8 +157,9 @@ export default function TodayTab({ tunes, byId, active, srs, notes, charts, skil
         <button onClick={() => answer(false)} style={{ ...btn(true, '#ff6363'), flex: 1, padding: '14px', fontSize: '14px' }}>Shaky</button>
       </div>
       <div style={{ fontSize: '10px', color: '#666', marginTop: '9px', textAlign: 'center' }}>
-        Shaky brings it back tomorrow. Got it pushes it further out each time.
+        Shaky brings it back tomorrow. Got it pushes it further out each day you get it right.
       </div>
+      {toastEl}
     </div>
   );
 }

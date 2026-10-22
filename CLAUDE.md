@@ -75,6 +75,23 @@ What differs is only what a **card** is: elsewhere a chord or a shape, here one
 skill on one tune. That is the whole point — the changes to a tune you play
 weekly stay solid while its head quietly comes due.
 
+**One answer per card per day** (`gradeCard`). Zak found that tapping Got it
+several times on a tune's page kept pushing the next review further out —
+every tap was a fresh SM-2 success. Now a repeat tap the same day re-grades
+from the card's pre-today state (`prev`), so it counts once, and tapping the
+other button *changes* today's answer rather than adding one. `ungradeCard`
+restores `prev` (or no card at all, if today was its first answer). The
+engine itself is untouched; verify.mjs pins all of this. Cards also carry
+`seen` (days graded — the field sync uses to settle two devices), `last` and
+`lastOk`, which is how the tune page knows to light the chosen button.
+
+Feedback, because a tap that leaves no trace reads as a tap that did not
+register: the tune page lights the chosen button and adds a "Saved for today —
+next review …" line with Undo; Today shows a floating toast with Undo, since
+the card has already moved on. Today also ignores taps for 500 ms after an
+answer — the card swaps instantly, so a double tap used to grade the *next*
+card unseen.
+
 `tuneIsReady()` = all four skills at `reps >= 2`, the same "learned" bar
 Diatonic uses. That drives the Progress tab's headline number: how many tunes
 you could actually call tonight.
