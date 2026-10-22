@@ -13,7 +13,7 @@ import { CORE_TUNES, TIERS, SKILLS, LETTER_FORMS } from '../data/tunes.js';
 import { defaultSections, countBars, emptyChart, parsePipedBars, fillBars } from '../lib/chart.js';
 import { FORM_TEMPLATES, templatesFor } from '../data/forms.js';
 import { parseKey, parseNumeral, renderBar } from '../lib/roman.js';
-import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays } from '../lib/srs.js';
+import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, cardId } from '../lib/srs.js';
 
 let failures = 0;
 const check = (name, fn) => {
@@ -316,7 +316,7 @@ check('the next day builds on today, and the engine is unchanged', () => {
   if (d2.reps !== 2 || d2.seen !== 2) fail(`two days of Got it: reps ${d2.reps}, seen ${d2.seen}`);
   const plain = updateSRS(updateSRS(undefined, true), true);
   if (d2.interval !== plain.interval || d2.ef !== plain.ef) fail('gradeCard must apply SM-2 exactly as updateSRS does');
-  if (d2.prev?.prev !== undefined) fail('prev must not nest — it holds one earlier state, not a history');
+  if (d2.hist?.length !== 2 || d2.hist[0].d !== today || d2.hist[1].d !== tomorrow) fail('both days should be on record, oldest first');
 });
 
 check('undo takes back only today, and a first answer undoes to never-reviewed', () => {
@@ -327,6 +327,129 @@ check('undo takes back only today, and a first answer undoes to never-reviewed',
   for (const k of Object.keys(old)) if (back[k] !== old[k]) fail(`undo changed ${k}`);
   if (ungradeCard(old, today) !== old) fail('a card not graded today must be left alone');
   if (!gradedToday(gradeCard(old, true, today), today) || gradedToday(old, today)) fail('gradedToday');
+});
+
+console.log('\nlib/srs.js — answer history');
+
+// The independent re-derivation: fold the SM-2 engine over a log, in date
+// order, each answer dated its own day. The app's card must always equal this
+// for whatever log it shows — that is the whole promise of the History list.
+const fold = (log, base = null) => [...log].sort((a, b) => a.d.localeCompare(b.d))
+  .reduce((st, e) => ({ ...st, ...updateSRS(st, e.ok, e.d) }), base);
+const SCHED = ['ef', 'interval', 'reps', 'nextDue'];
+const sameSched = (got, want, what) => { for (const k of SCHED) if (got?.[k] !== want?.[k]) fail(`${what}: ${k} ${got?.[k]}, expected ${want?.[k]}`); };
+// Deterministic pseudo-random sequences, so a failure reproduces.
+let seed = 7;
+const rnd = n => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+const T0 = '2026-03-01';
+// A run of answers on random days, some days answered twice (a change of mind).
+const run = () => {
+  let card, day = T0, len = 2 + rnd(12);
+  const log = new Map();
+  for (let i = 0; i < len; i++) {
+    if (rnd(3)) day = addDays(day, 1 + rnd(9));
+    const ok = rnd(4) !== 0;
+    card = gradeCard(card, ok, day); log.set(day, ok);
+  }
+  return { card, log: [...log].map(([d, ok]) => ({ d, ok })), day };
+};
+
+check('the schedule always equals the engine replayed over the listed answers', () => {
+  for (let i = 0; i < 400; i++) {
+    const { card, log } = run();
+    sameSched(card, fold(log), `run ${i}`);
+    if (card.hist.length !== log.length) fail(`run ${i}: ${card.hist.length} entries listed, ${log.length} days answered`);
+    if (card.seen !== log.length) fail(`run ${i}: seen ${card.seen} for ${log.length} answers`);
+  }
+});
+
+check('editing or deleting any answer re-derives the schedule from scratch', () => {
+  for (let i = 0; i < 400; i++) {
+    const { card, log, day } = run();
+    const at = log[rnd(log.length)];
+    // Flip the result.
+    const flipped = editAnswer(card, at.d, { ok: !at.ok }, day);
+    sameSched(flipped, fold(log.map(e => e.d === at.d ? { d: e.d, ok: !e.ok } : e)), `run ${i} flip`);
+    // Move it to a free earlier day.
+    let to = addDays(at.d, -(1 + rnd(5)));
+    while (log.some(e => e.d === to)) to = addDays(to, -1);
+    const moved = editAnswer(card, at.d, { ok: at.ok, d: to }, day);
+    sameSched(moved, fold([...log.filter(e => e.d !== at.d), { d: to, ok: at.ok }]), `run ${i} move`);
+    // Delete it.
+    const gone = deleteAnswer(card, at.d);
+    const rest = log.filter(e => e.d !== at.d);
+    if (!rest.length) { if (gone !== null) fail(`run ${i}: deleting the only answer should leave no card`); continue; }
+    sameSched(gone, fold(rest), `run ${i} delete`);
+    if (gone.hist.some(e => e.d === at.d)) fail(`run ${i}: the deleted answer is still listed`);
+  }
+});
+
+check('an edit never adds a second answer to a day, and never lands in the future', () => {
+  const today = '2026-03-10';
+  let c = gradeCard(undefined, true, '2026-03-05');
+  c = gradeCard(c, true, '2026-03-07');
+  const onto = editAnswer(c, '2026-03-07', { ok: false, d: '2026-03-05' }, today);
+  if (onto.hist.length !== 1 || onto.hist[0].ok !== false) fail('moving onto an answered day should replace that day, leaving one entry');
+  if (editAnswer(c, '2026-03-07', { ok: true, d: '2026-03-11' }, today) !== c) fail('a future day must be refused');
+  if (editAnswer(c, '2026-03-06', { ok: false }, today) !== c) fail('editing a day with no answer must change nothing');
+  if (deleteAnswer(c, '2026-03-06') !== c) fail('deleting a day with no answer must change nothing');
+});
+
+check('seen never goes down on an edit or delete — sync settles two devices by it', () => {
+  for (let i = 0; i < 200; i++) {
+    const { card, log, day } = run();
+    const at = log[rnd(log.length)];
+    const e = editAnswer(card, at.d, { ok: !at.ok }, day);
+    if (!(e.seen > card.seen)) fail(`run ${i}: an edit should raise seen (${card.seen} → ${e.seen})`);
+    const g = deleteAnswer(card, at.d);
+    if (g && g.seen < card.seen) fail(`run ${i}: a delete lowered seen (${card.seen} → ${g.seen})`);
+    // And it survives the next answer: history edits are not forgotten.
+    const next = gradeCard(e, true, addDays(day, 1));
+    if (next.seen !== e.seen + 1) fail(`run ${i}: answering after an edit should add one to seen`);
+  }
+});
+
+check('cards saved before the history existed load unchanged and list what they can', () => {
+  const today = todayStr(), y = addDays(today, -1), w = addDays(today, -8);
+  // The shape saved by the version before this one: the answer it took, plus
+  // the state from before it (`prev`).
+  const oldGrade = (base, ok, d) => {
+    const { prev: _o, ...clean } = base || {};
+    return { ...updateSRS(base, ok, d), seen: (base?.seen ?? 0) + 1, last: d, lastOk: ok, prev: base ? clean : null };
+  };
+  const legacy = { ef: 2.5, interval: 6, reps: 2, nextDue: y };     // no log, no seen
+  const prevShaped = oldGrade(oldGrade(legacy, true, w), false, y);
+  const h = historyOf(prevShaped);
+  if (h.hist.length !== 1 || h.hist[0].d !== y || h.hist[0].ok !== false) fail('the last answer of a prev-shaped card should be its one listed entry');
+  if (!hasUnloggedPast(prevShaped) || hasUnloggedPast(gradeCard(undefined, true, today))) fail('hasUnloggedPast');
+  if (historyOf(legacy).hist.length !== 0) fail('a legacy card has no listable answers');
+  // Converting on the next change must not move anything: deleting nothing,
+  // grading today, then undoing it gets back the schedule it had.
+  const back = ungradeCard(gradeCard(prevShaped, true, today), today);
+  sameSched(back, prevShaped, 'prev-shaped card after grade + undo');
+  if (back.seen !== prevShaped.seen) fail(`seen ${back.seen}, was ${prevShaped.seen}`);
+  // Editing its one recoverable answer replays from the state before it.
+  const fixed = editAnswer(prevShaped, y, { ok: true }, today);
+  sameSched(fixed, fold([{ d: y, ok: true }], historyOf(prevShaped).base), 'prev-shaped edit');
+  // A first answer under the old version has no base at all.
+  const first = oldGrade(undefined, true, y);
+  const firstBack = ungradeCard(gradeCard(first, false, today), today);
+  sameSched(firstBack, first, 'first prev-shaped answer');
+  if (deleteAnswer(first, y) !== null) fail('deleting the only answer of a first prev-shaped card should leave no card');
+});
+
+check('the history lists come out newest first and stay within a tune', () => {
+  const skills = [{ id: 'head' }, { id: 'changes' }, { id: 'form' }, { id: 'solo' }];
+  const srs = {
+    [cardId('a', 'head')]: gradeCard(gradeCard(undefined, true, '2026-03-01'), false, '2026-03-04'),
+    [cardId('a', 'solo')]: gradeCard(undefined, true, '2026-03-04'),
+    [cardId('b', 'form')]: gradeCard(undefined, true, '2026-03-03'),
+  };
+  const a = tuneHistory(srs, 'a', skills).map(e => `${e.d} ${e.skill}`);
+  if (a.join(',') !== '2026-03-04 head,2026-03-04 solo,2026-03-01 head') fail(`tune a: ${a.join(', ')}`);
+  const r = recentAnswers(srs, ['a', 'b'], skills, 3).map(e => `${e.tuneId} ${e.d}`);
+  if (r.join(',') !== 'a 2026-03-04,a 2026-03-04,b 2026-03-03') fail(`recent: ${r.join(', ')}`);
+  if (recentAnswers(srs, ['b'], skills).length !== 1) fail('recentAnswers must only read the tunes it is given');
 });
 
 console.log('\ndata/tunes.js — the guard');

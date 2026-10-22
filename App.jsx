@@ -14,7 +14,7 @@ import StandardsHeader from './components/StandardsHeader.jsx';
 import { TOOL, ACCENT } from './lib/tool.js';
 import { CORE_TUNES, SKILLS } from './data/tunes.js';
 import { K_ACTIVE, K_SRS, K_NOTES, K_CUSTOM, K_CHARTS, read, write } from './lib/store.js';
-import { gradeCard, ungradeCard, cardId } from './lib/srs.js';
+import { gradeCard, ungradeCard, editAnswer, deleteAnswer, cardId } from './lib/srs.js';
 import TodayTab from './tabs/TodayTab.jsx';
 import TunesTab from './tabs/TunesTab.jsx';
 import ProgressTab from './tabs/ProgressTab.jsx';
@@ -87,18 +87,20 @@ export default function App() {
     setSrs(s); write(K_SRS, s);
   }, []);
 
-  // gradeCard makes a repeat answer on the same day replace the first rather
-  // than stack on it — see lib/srs.js.
-  const grade = useCallback((id, correct) => {
-    const s = { ...srsRef.current, [id]: gradeCard(srsRef.current[id], correct) };
-    setSrs(s); write(K_SRS, s);
-  }, []);
-  const ungrade = useCallback(id => {
-    const back = ungradeCard(srsRef.current[id]);
+  // Every change to a card goes through lib/srs.js, which keeps its answer
+  // history and replays the schedule from it: a repeat answer on the same day
+  // replaces the first rather than stacking on it, and editing or deleting an
+  // old answer re-derives the schedule. A null card has nothing left on record
+  // (a first answer undone, an only answer deleted) and is removed outright.
+  const putCard = useCallback((id, card) => {
     const s = { ...srsRef.current };
-    if (back) s[id] = back; else delete s[id];
+    if (card) s[id] = card; else delete s[id];
     setSrs(s); write(K_SRS, s);
   }, []);
+  const grade = useCallback((id, correct) => putCard(id, gradeCard(srsRef.current[id], correct)), [putCard]);
+  const ungrade = useCallback(id => putCard(id, ungradeCard(srsRef.current[id])), [putCard]);
+  const editAns = useCallback((id, date, change) => putCard(id, editAnswer(srsRef.current[id], date, change)), [putCard]);
+  const deleteAns = useCallback((id, date) => putCard(id, deleteAnswer(srsRef.current[id], date)), [putCard]);
 
   const setNote = useCallback((tuneId, text) => {
     const n = { ...notesRef.current, [tuneId]: text };
@@ -224,7 +226,7 @@ export default function App() {
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'none' }}>
         <div style={{ paddingBottom: 'max(32px,env(safe-area-inset-bottom))' }}>
           {tab === 'today' && <TodayTab {...shared} onGrade={grade} onUngrade={ungrade} onGoTunes={() => goTab('tunes')} scrollRef={scrollRef} />}
-          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onSetChart={setChart} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
+          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onSetChart={setChart} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} onEditAnswer={editAns} onDeleteAnswer={deleteAns} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
           {tab === 'progress' && <ProgressTab {...shared} onGoTunes={() => goTab('tunes')} onGoTune={goTune} />}
           {tab === 'guide' && <GuideTab />}
           {tab === 'settings' && <SettingsTab />}

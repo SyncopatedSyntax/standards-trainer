@@ -4,10 +4,11 @@
 import { useState } from 'react';
 import { btn, panel, labelCss, TextArea } from './ui.jsx';
 import ChartEditor from './ChartEditor.jsx';
+import AnswerHistory from './AnswerHistory.jsx';
 import { ACCENT } from '../lib/tool.js';
 import { cardId, isSkillSolid, todayStr, tuneIsReady, relativeDay, gradedToday } from '../lib/srs.js';
 
-export default function TuneDetail({ tune, active, srs, notes, charts, skills, onBack, onActivate, onDeactivate, onSetNote, onSetChart, onGrade, onUngrade, onRemoveCustom }) {
+export default function TuneDetail({ tune, active, srs, notes, charts, skills, onBack, onActivate, onDeactivate, onSetNote, onSetChart, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onRemoveCustom }) {
   const today = todayStr();
   const isActive = active.includes(tune.id);
   const ready = isActive && tuneIsReady(srs, tune.id, skills);
@@ -113,6 +114,8 @@ export default function TuneDetail({ tune, active, srs, notes, charts, skills, o
         </div>
       )}
 
+      {isActive && <AnswerHistory tune={tune} srs={srs} skills={skills} today={today} onEdit={onEditAnswer} onDelete={onDeleteAnswer} />}
+
       <ChartEditor tune={tune} charts={charts} onSetChart={onSetChart} note={notes[tune.id] || ''} />
 
       <div style={{ ...panel, marginBottom: '12px' }}>
@@ -125,7 +128,7 @@ export default function TuneDetail({ tune, active, srs, notes, charts, skills, o
         <div style={{ ...panel }}>
           {confirmDrop ? (
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => { onDeactivate(tune.id); setConfirmDrop(false); onBack(); }} style={{ ...btn(true, '#ff6363'), flex: 1 }}>Drop it — loses the schedule</button>
+              <button onClick={() => { onDeactivate(tune.id); setConfirmDrop(false); onBack(); }} style={{ ...btn(true, '#ff6363'), flex: 1 }}>Drop it — loses the schedule and history</button>
               <button onClick={() => setConfirmDrop(false)} style={btn(false)}>Cancel</button>
             </div>
           ) : (

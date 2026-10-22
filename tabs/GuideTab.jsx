@@ -61,6 +61,12 @@ export default function GuideTab() {
           Nothing is scheduled until you take a tune on, so browsing the core path costs you
           nothing. Take on one tune at a time; four cards each adds up faster than it looks.
         </p>
+        <p style={{ margin: '0 0 10px' }}>
+          One answer per skill per day: tapping again changes today&rsquo;s answer rather than
+          adding another. Every answer is kept under <b style={{ color: '#fff' }}>History</b> on
+          the tune&rsquo;s page. Change one from Got it to Shaky, move it to another day or delete
+          it, and the schedule is worked out again as if you had answered that way at the time.
+        </p>
         <p style={{ margin: 0, color: '#888' }}>
           Grade honestly. The schedule is only as good as the grading, and the person it fools
           is you.

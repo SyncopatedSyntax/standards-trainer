@@ -41,7 +41,9 @@ this app is covered by both with no extra wiring.
   `facts[]` and `guitar[]` — see *Facts and guitar notes* below.
 - `js_active` — tune ids taken on. A core tune is **inert until activated**, so
   browsing the path costs nothing and the queue can't open with 100 cards.
-- `js_srs` — SM-2 state keyed `` `${tuneId}.${skill}` ``.
+- `js_srs` — SM-2 state keyed `` `${tuneId}.${skill}` ``, each card carrying its
+  own answer log (`hist`) — see *The answer history* below. There is no
+  separate history key, so backup and sync carry it with no extra wiring.
 - `js_charts` — the bar grid per tune:
   `{ [tuneId]: { sections: [{ label, bars: ['Cm7', …] }] } }`. A bar is a plain
   **string**, so "B♭Δ D7" is simply two chords in one bar — no nested structure
@@ -77,13 +79,59 @@ weekly stay solid while its head quietly comes due.
 
 **One answer per card per day** (`gradeCard`). Zak found that tapping Got it
 several times on a tune's page kept pushing the next review further out —
-every tap was a fresh SM-2 success. Now a repeat tap the same day re-grades
-from the card's pre-today state (`prev`), so it counts once, and tapping the
-other button *changes* today's answer rather than adding one. `ungradeCard`
-restores `prev` (or no card at all, if today was its first answer). The
-engine itself is untouched; verify.mjs pins all of this. Cards also carry
-`seen` (days graded — the field sync uses to settle two devices), `last` and
-`lastOk`, which is how the tune page knows to light the chosen button.
+every tap was a fresh SM-2 success. Now a repeat tap the same day *replaces*
+that day's answer, so it counts once, and tapping the other button changes
+today's answer rather than adding one. `ungradeCard` takes today's answer back
+(to no card at all, if it was the first). `last`/`lastOk` are how the tune page
+knows to light the chosen button.
+
+### The answer history
+
+Zak asked to see past answers and to fix or delete them. So a card keeps
+`hist` — `[{ d: 'YYYY-MM-DD', ok }]`, at most one per day — and its schedule
+(`ef`, `interval`, `reps`, `nextDue`) is **never stored independently of it**:
+every change goes through `replay(base, hist, edits)`, which folds the
+unchanged SM-2 engine over the log in date order, each answer dated its own day
+(`updateSRS` gained an `on` date for exactly this). Editing an old answer —
+result, day, or both — or deleting it therefore re-derives the schedule as if
+the history had always read that way. A mis-tapped Got it from last week stops
+holding a skill out of the queue the moment it is corrected.
+
+- `base` is where the replay starts: `null` for a card first answered with the
+  log in place, otherwise the running state the card had before it. Answers
+  from before the log existed were only ever stored as that state, so they
+  **count but are never listed**, and are not invented now. Do not "recover"
+  them from `reps`/`seen` — a fabricated entry would be editable, and editing a
+  guess would corrupt a real schedule. The History panel says why they are
+  missing (`hasUnloggedPast`).
+- The previous version stored `prev` (the state before the latest answer).
+  `historyOf()` reads that shape as one recoverable entry on top of `prev`, and
+  older cards as a bare `base`; both convert on their next change, never on
+  read. verify.mjs pins that a converted card's schedule does not move.
+- `seen` = `base.seen` + answers on record + `edits`. Sync settles two devices
+  that both changed a card by more-`seen`-wins, so an edit bumps `edits`: a
+  corrected history must not lose to an older, uncorrected copy. A delete
+  removes one entry and adds one edit, so `seen` never goes *down* on either.
+  The Undo straight after answering is not an edit and does lower it, as before.
+- Edits refuse a future day, and moving an answer onto a day that already has
+  one replaces it (the editor warns first) — still one per day.
+- A save that changes nothing does not count as an edit (`AnswerHistory`
+  checks before calling), so idly opening and saving cannot inflate `seen`.
+
+verify.mjs re-derives the schedule independently (a plain fold of `updateSRS`)
+for 400 random answer runs, then flips, moves and deletes a random entry of
+each and checks the card against that fold every time.
+
+**Where it shows.** The tune page's **History** panel (`components/AnswerHistory.jsx`),
+under the four skills: newest first, one heading per day, Edit opens an inline
+editor (Got it/Shaky, a date input capped at today, Save, Delete — two taps).
+A confirmation line after each change reads the new next review back from the
+schedule. Progress has **Recent answers** across all tunes, read-only, tapping
+through to the tune — an answer is edited next to the other skills it is
+scheduled with, not from a list of strangers. Dates are UTC days (`todayStr`),
+so `dayLabel()` formats them in UTC; formatting one in local time puts it on the
+previous day anywhere west of Greenwich. The Progress forecast's weekday letters
+had exactly that bug and now pass `timeZone: 'UTC'` too.
 
 Feedback, because a tap that leaves no trace reads as a tap that did not
 register: the tune page lights the chosen button and adds a "Saved for today —
@@ -115,7 +163,8 @@ you could actually call tonight.
   `byAttention` order the Tunes tab uses. One repertoire must not appear in two
   orders depending on which tab you reached it from. Rows tap through to the
   tune — App holds an `openTune` request that `TunesTab` consumes and clears.
-  Then the skill breakdown and the 7-day forecast.
+  Then the skill breakdown, the 7-day forecast, and **Recent answers** (the
+  last eight across every tune, tapping through the same way).
 - **Guide** 📖 — the four skills, how reviews work, why you type the changes in,
   and a **jam mechanics** reference (calling, counting off, head–solos–head,
   comping behind a soloist, trading fours, endings, holding the form). Text

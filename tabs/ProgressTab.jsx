@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { panel, labelCss, EmptyState } from '../components/ui.jsx';
 import TuneStatus, { byAttention } from '../components/TuneStatus.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { stats, forecast, tuneIsReady, todayStr } from '../lib/srs.js';
+import { stats, forecast, tuneIsReady, todayStr, recentAnswers, dayLabel } from '../lib/srs.js';
 import { chartFor, countBars, countFilled } from '../lib/chart.js';
 
 export default function ProgressTab({ tunes, byId, active, srs, charts, skills, onGoTunes, onGoTune }) {
@@ -18,6 +18,8 @@ export default function ProgressTab({ tunes, byId, active, srs, charts, skills, 
   const working = useMemo(
     () => [...active].sort(byAttention(srs, skills, today)).map(id => byId.get(id)).filter(Boolean),
     [active, srs, skills, byId, today]);
+  const recent = useMemo(() => recentAnswers(srs, active, skills, 8), [srs, active, skills]);
+  const skillLabel = useMemo(() => Object.fromEntries(skills.map(k => [k.id, k.label])), [skills]);
 
   if (active.length === 0) {
     return <EmptyState icon="📊" title="Nothing tracked yet"
@@ -108,7 +110,7 @@ export default function ProgressTab({ tunes, byId, active, srs, charts, skills, 
               <div style={{ fontSize: '9px', color: d.n ? '#bbb' : '#555', fontFamily: 'var(--font-mono)' }}>{d.n || ''}</div>
               <div style={{ width: '100%', height: `${(d.n / maxDay) * 44}px`, minHeight: d.n ? '3px' : '0', background: i === 0 ? ACCENT : ACCENT + '66', borderRadius: '3px 3px 0 0' }} />
               <div style={{ fontSize: '9px', color: '#666' }}>
-                {i === 0 ? 'now' : new Date(d.date).toLocaleDateString(undefined, { weekday: 'narrow' })}
+                {i === 0 ? 'now' : new Date(d.date).toLocaleDateString(undefined, { weekday: 'narrow', timeZone: 'UTC' })}
               </div>
             </div>
           ))}
@@ -117,6 +119,33 @@ export default function ProgressTab({ tunes, byId, active, srs, charts, skills, 
           Cards due each day for the next week. A tall bar today means catch up before adding a new tune.
         </div>
       </div>
+
+      {/* Looking back, under the forecast looking forward. Read-only here: an
+          answer is edited on its tune's page, next to the other three skills
+          it is scheduled alongside, so this just takes you there. */}
+      {recent.length > 0 && (
+        <div style={{ ...panel, marginTop: '12px' }}>
+          <div style={labelCss}>Recent answers</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {recent.map(e => {
+              const t = byId.get(e.tuneId);
+              return (
+                <div key={`${e.id}|${e.d}`} onClick={() => onGoTune?.(e.tuneId)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0f0e17', border: '1px solid #242235', borderRadius: '9px', padding: '8px 9px', cursor: onGoTune ? 'pointer' : 'default', touchAction: 'manipulation' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t?.title || e.tuneId}</div>
+                    <div style={{ fontSize: '10px', color: '#777', marginTop: '1px' }}>{dayLabel(e.d, today)} · {skillLabel[e.skill]}</div>
+                  </div>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: e.ok ? '#00b894' : '#ff8f8f' }}>{e.ok ? '✓ Got it' : '↺ Shaky'}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: '10px', color: '#666', marginTop: '8px', lineHeight: 1.6 }}>
+            Tap one to open the tune. Its History section is where an answer can be changed or deleted.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
