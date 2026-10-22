@@ -13,7 +13,7 @@ import { CORE_TUNES, TIERS, SKILLS, LETTER_FORMS } from '../data/tunes.js';
 import { defaultSections, countBars, emptyChart, parsePipedBars, fillBars } from '../lib/chart.js';
 import { FORM_TEMPLATES, templatesFor } from '../data/forms.js';
 import { parseKey, parseNumeral, renderBar } from '../lib/roman.js';
-import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, cardId } from '../lib/srs.js';
+import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, earlierAnswers, clearEarlier, isSkillSolid, cardId } from '../lib/srs.js';
 
 let failures = 0;
 const check = (name, fn) => {
@@ -436,6 +436,32 @@ check('cards saved before the history existed load unchanged and list what they 
   const firstBack = ungradeCard(gradeCard(first, false, today), today);
   sameSched(firstBack, first, 'first prev-shaped answer');
   if (deleteAnswer(first, y) !== null) fail('deleting the only answer of a first prev-shaped card should leave no card');
+});
+
+check('earlier answers can be cleared, leaving only the listed ones', () => {
+  // The case Zak hit: Changes tapped four times under the old version (each
+  // tap counted), nothing listed, every listed answer on the tune deleted —
+  // and Changes still read solid, 38 days out.
+  let legacy; for (let i = 0; i < 4; i++) legacy = updateSRS(legacy, true, T0);
+  if (!isSkillSolid(legacy)) fail('setup: the legacy card should read solid');
+  const skills = [{ id: 'head' }, { id: 'changes' }];
+  const rows = earlierAnswers({ [cardId('t', 'changes')]: legacy }, 't', skills);
+  if (rows.length !== 1 || rows[0].skill !== 'changes' || rows[0].reps !== 4) fail(`earlier rows: ${JSON.stringify(rows)}`);
+  if (clearEarlier(legacy) !== null) fail('clearing a card with nothing listed should leave no card — not started');
+  // With answers listed on top, clearing leaves exactly those answers.
+  for (let i = 0; i < 200; i++) {
+    const log = run().log;
+    const card = log.reduce((c, e) => gradeCard(c, e.ok, e.d), { ...legacy, seen: 3 });
+    const cleared = clearEarlier(card);
+    sameSched(cleared, fold(log), `run ${i} clear`);
+    if (hasUnloggedPast(cleared)) fail(`run ${i}: still has an unlogged past`);
+    if (!(cleared.seen > card.seen)) fail(`run ${i}: clearing lowered seen (${card.seen} → ${cleared.seen})`);
+    if (clearEarlier(cleared) !== cleared) fail(`run ${i}: clearing twice must change nothing`);
+  }
+  // A prev-shaped card's base is its earlier past too.
+  const prevShaped = { ...updateSRS(legacy, true, T0), seen: 1, last: T0, lastOk: true, prev: legacy };
+  const c = clearEarlier(prevShaped);
+  sameSched(c, fold([{ d: T0, ok: true }]), 'prev-shaped clear');
 });
 
 check('the history lists come out newest first and stay within a tune', () => {

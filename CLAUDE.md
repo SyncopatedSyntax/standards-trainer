@@ -99,11 +99,19 @@ holding a skill out of the queue the moment it is corrected.
 
 - `base` is where the replay starts: `null` for a card first answered with the
   log in place, otherwise the running state the card had before it. Answers
-  from before the log existed were only ever stored as that state, so they
-  **count but are never listed**, and are not invented now. Do not "recover"
-  them from `reps`/`seen` — a fabricated entry would be editable, and editing a
-  guess would corrupt a real schedule. The History panel says why they are
-  missing (`hasUnloggedPast`).
+  from before the log existed were only ever stored as that state, so they are
+  **never itemised**, and are not invented now. Do not "recover" them from
+  `reps`/`seen` — a fabricated entry would be editable, and editing a guess
+  would corrupt a real schedule.
+- But the base **must be visible and removable.** The first cut only
+  mentioned it in a footnote, and Zak deleted every listed answer on Boogie
+  Woogie Bugle Boy only to find its Changes still solid, 38 days out: the taps
+  behind it were made under the old count-every-tap bug, before the log, and
+  nothing on screen could reach them. So History ends with an **Earlier — not
+  saved one by one** row per skill that has a base (`earlierAnswers`, showing
+  `base.reps` as "✓ 4 in a row"), with **Clear** (two taps): `clearEarlier`
+  drops the base, leaving the listed answers alone — or no card at all, so the
+  skill reads not started. Clearable, never editable.
 - The previous version stored `prev` (the state before the latest answer).
   `historyOf()` reads that shape as one recoverable entry on top of `prev`, and
   older cards as a bare `base`; both convert on their next change, never on
@@ -113,6 +121,7 @@ holding a skill out of the queue the moment it is corrected.
   corrected history must not lose to an older, uncorrected copy. A delete
   removes one entry and adds one edit, so `seen` never goes *down* on either.
   The Undo straight after answering is not an edit and does lower it, as before.
+  `clearEarlier` carries `base.seen` into `edits` for the same reason.
 - Edits refuse a future day, and moving an answer onto a day that already has
   one replaces it (the editor warns first) — still one per day.
 - A save that changes nothing does not count as an edit (`AnswerHistory`

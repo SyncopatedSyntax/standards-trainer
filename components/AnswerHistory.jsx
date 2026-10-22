@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { btn, panel, labelCss } from './ui.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { cardId, historyOf, tuneHistory, hasUnloggedPast, relativeDay, dayLabel } from '../lib/srs.js';
+import { historyOf, tuneHistory, earlierAnswers, relativeDay, dayLabel } from '../lib/srs.js';
 
 const SHOW = 12;
 const okColor = ok => (ok ? '#00b894' : '#ff8f8f');
@@ -67,12 +67,33 @@ function Editor({ entry, skillLabel, taken, today, onSave, onDelete, onCancel })
   );
 }
 
-export default function AnswerHistory({ tune, srs, skills, today, onEdit, onDelete }) {
+// Answers from before the history was kept can only be cleared, not edited:
+// there is no list of them to edit, only the schedule they added up to.
+function EarlierEditor({ skillLabel, listed, onClear, onCancel }) {
+  return (
+    <div className="st-pop" style={{ background: '#0f0e17', border: '1px solid #ff636355', borderRadius: '9px', padding: '10px', margin: '4px 0' }}>
+      <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>Clear earlier answers — {skillLabel}</div>
+      <div style={{ fontSize: '11.5px', color: '#aaa', lineHeight: 1.6 }}>
+        These were saved before the history existed, as a running total rather than one by one — including
+        taps the old version counted more than once. They can&rsquo;t be edited, only cleared.{' '}
+        {listed
+          ? `The schedule is then worked out from the ${skillLabel} answers listed above alone.`
+          : `With nothing else listed, ${skillLabel} goes back to not started.`}
+      </div>
+      <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
+        <button onClick={onClear} style={{ ...btn(true, '#ff6363'), flex: 1, minHeight: '40px' }}>Clear for good</button>
+        <button onClick={onCancel} style={small}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+export default function AnswerHistory({ tune, srs, skills, today, onEdit, onDelete, onClearEarlier }) {
   const [editing, setEditing] = useState(null);   // `${cardId}|${day}`
   const [all, setAll] = useState(false);
   const [done, setDone] = useState(null);         // the last change, for the line that confirms it
   const list = tuneHistory(srs, tune.id, skills);
-  const unlogged = skills.some(s => hasUnloggedPast(srs[cardId(tune.id, s.id)]));
+  const earlier = earlierAnswers(srs, tune.id, skills);
   const label = Object.fromEntries(skills.map(s => [s.id, s.label]));
   const shown = all ? list : list.slice(0, SHOW);
 
@@ -96,9 +117,9 @@ export default function AnswerHistory({ tune, srs, skills, today, onEdit, onDele
         </div>
       )}
 
-      {list.length === 0 ? (
+      {list.length === 0 && earlier.length === 0 ? (
         <div style={{ fontSize: '12px', color: '#888', lineHeight: 1.6 }}>
-          {unlogged ? 'No answers listed yet.' : 'Nothing answered yet.'} Every Got it and Shaky lands here — one per skill per day — and can be changed or deleted later.
+          Nothing answered yet. Every Got it and Shaky lands here — one per skill per day — and can be changed or deleted later.
         </div>
       ) : (
         <div>
@@ -135,12 +156,35 @@ export default function AnswerHistory({ tune, srs, skills, today, onEdit, onDele
               {all ? 'Show fewer' : `Show all ${list.length}`}
             </button>
           )}
+          {/* The oldest part of the record, so it goes last. */}
+          {earlier.length > 0 && (
+            <div style={{ marginTop: '6px' }}>
+              <div style={{ fontSize: '10.5px', color: '#777', fontWeight: 700, padding: '4px 0 2px', borderTop: '1px solid #1f1d2e' }}>Earlier — not saved one by one</div>
+              {earlier.map(e => {
+                const k = `${e.id}|earlier`;
+                if (editing === k) {
+                  return (
+                    <EarlierEditor key={k} skillLabel={label[e.skill]} listed={historyOf(srs[e.id]).hist.length > 0}
+                      onCancel={() => setEditing(null)}
+                      onClear={() => { onClearEarlier(e.id); finish(e, 'Cleared earlier answers'); }} />
+                  );
+                }
+                return (
+                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 0' }}>
+                    <span style={{ flex: 1, fontSize: '12.5px', color: '#ddd', fontWeight: 700 }}>{label[e.skill]}</span>
+                    <span style={{ fontSize: '12px', color: okColor(e.reps > 0), fontWeight: 700 }}>{e.reps > 0 ? `✓ ${e.reps} in a row` : '↺ ended Shaky'}</span>
+                    <button onClick={() => { setEditing(k); setDone(null); }} style={small}>Clear</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       <div style={{ fontSize: '10.5px', color: '#666', marginTop: '8px', lineHeight: 1.6 }}>
         Change or delete an answer and the schedule is worked out again, as if you had answered that way at the time.
-        {unlogged && ' Answers from before this history was kept still count toward the schedule, but were not saved one by one, so they cannot be listed here.'}
+        {earlier.length > 0 && ' Earlier rows are answers from before this history was kept: they still count toward the schedule, but were saved as a running total, so they can be cleared but not edited.'}
       </div>
     </div>
   );

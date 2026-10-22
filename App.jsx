@@ -14,7 +14,7 @@ import StandardsHeader from './components/StandardsHeader.jsx';
 import { TOOL, ACCENT } from './lib/tool.js';
 import { CORE_TUNES, SKILLS } from './data/tunes.js';
 import { K_ACTIVE, K_SRS, K_NOTES, K_CUSTOM, K_CHARTS, read, write } from './lib/store.js';
-import { gradeCard, ungradeCard, editAnswer, deleteAnswer, cardId } from './lib/srs.js';
+import { gradeCard, ungradeCard, editAnswer, deleteAnswer, clearEarlier, cardId } from './lib/srs.js';
 import TodayTab from './tabs/TodayTab.jsx';
 import TunesTab from './tabs/TunesTab.jsx';
 import ProgressTab from './tabs/ProgressTab.jsx';
@@ -101,6 +101,7 @@ export default function App() {
   const ungrade = useCallback(id => putCard(id, ungradeCard(srsRef.current[id])), [putCard]);
   const editAns = useCallback((id, date, change) => putCard(id, editAnswer(srsRef.current[id], date, change)), [putCard]);
   const deleteAns = useCallback((id, date) => putCard(id, deleteAnswer(srsRef.current[id], date)), [putCard]);
+  const clearEarly = useCallback(id => putCard(id, clearEarlier(srsRef.current[id])), [putCard]);
 
   const setNote = useCallback((tuneId, text) => {
     const n = { ...notesRef.current, [tuneId]: text };
@@ -226,7 +227,7 @@ export default function App() {
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'none' }}>
         <div style={{ paddingBottom: 'max(32px,env(safe-area-inset-bottom))' }}>
           {tab === 'today' && <TodayTab {...shared} onGrade={grade} onUngrade={ungrade} onGoTunes={() => goTab('tunes')} scrollRef={scrollRef} />}
-          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onSetChart={setChart} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} onEditAnswer={editAns} onDeleteAnswer={deleteAns} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
+          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onSetChart={setChart} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} onEditAnswer={editAns} onDeleteAnswer={deleteAns} onClearEarlier={clearEarly} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
           {tab === 'progress' && <ProgressTab {...shared} onGoTunes={() => goTab('tunes')} onGoTune={goTune} />}
           {tab === 'guide' && <GuideTab />}
           {tab === 'settings' && <SettingsTab />}

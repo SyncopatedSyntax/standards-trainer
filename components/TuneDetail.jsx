@@ -8,7 +8,7 @@ import AnswerHistory from './AnswerHistory.jsx';
 import { ACCENT } from '../lib/tool.js';
 import { cardId, isSkillSolid, todayStr, tuneIsReady, relativeDay, gradedToday } from '../lib/srs.js';
 
-export default function TuneDetail({ tune, active, srs, notes, charts, skills, onBack, onActivate, onDeactivate, onSetNote, onSetChart, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onRemoveCustom }) {
+export default function TuneDetail({ tune, active, srs, notes, charts, skills, onBack, onActivate, onDeactivate, onSetNote, onSetChart, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, onRemoveCustom }) {
   const today = todayStr();
   const isActive = active.includes(tune.id);
   const ready = isActive && tuneIsReady(srs, tune.id, skills);
@@ -114,7 +114,7 @@ export default function TuneDetail({ tune, active, srs, notes, charts, skills, o
         </div>
       )}
 
-      {isActive && <AnswerHistory tune={tune} srs={srs} skills={skills} today={today} onEdit={onEditAnswer} onDelete={onDeleteAnswer} />}
+      {isActive && <AnswerHistory tune={tune} srs={srs} skills={skills} today={today} onEdit={onEditAnswer} onDelete={onDeleteAnswer} onClearEarlier={onClearEarlier} />}
 
       <ChartEditor tune={tune} charts={charts} onSetChart={onSetChart} note={notes[tune.id] || ''} />
 
