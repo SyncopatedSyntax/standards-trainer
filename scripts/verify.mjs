@@ -9,8 +9,10 @@
 //
 //   node scripts/verify.mjs
 
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { CORE_TUNES, TIERS, SKILLS, LETTER_FORMS } from '../data/tunes.js';
-import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, earlierAnswers, clearEarlier, isSkillSolid, cardId, learnedOn, tuneStage, capDue, withMaxGap, DEFAULT_MAX_GAP } from '../lib/srs.js';
+import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, earlierAnswers, clearEarlier, isSkillSolid, cardId, learnedOn, tuneStage, capDue, withMaxGap, DEFAULT_MAX_GAP, learnedTimeline, learnedThisMonth } from '../lib/srs.js';
 import { chartText, migrateCharts } from '../lib/migrate.js';
 
 let failures = 0;
@@ -352,6 +354,26 @@ check('a tune is learned from the first day all four skills were solid together'
   if (tuneStage({}, 'none', skills, D(0)) !== 'learning') fail('a tune with no answers is learning');
 });
 
+check('the growth list: learned tunes newest first, the undated last, and a monthly count', () => {
+  const skills = [{ id: 'head' }, { id: 'changes' }, { id: 'form' }, { id: 'solo' }];
+  const srs = {};
+  const learn = (t, d1, d2) => { for (const s of skills) srs[cardId(t, s.id)] = gradeCard(gradeCard(undefined, true, d1), true, d2); };
+  learn('a', '2026-09-01', '2026-09-08');          // learned 8 Sep
+  learn('b', '2026-10-01', '2026-10-09');          // learned 9 Oct
+  learn('c', '2026-10-02', '2026-10-20');          // learned 20 Oct
+  srs[cardId('d', 'head')] = gradeCard(undefined, true, '2026-10-05');   // still learning
+  const legacy = { ef: 2.5, interval: 15, reps: 3, nextDue: '2026-11-01' };
+  for (const s of skills) srs[cardId('e', s.id)] = legacy;              // learned before the history
+  const tl = learnedTimeline(srs, ['e', 'a', 'b', 'c', 'd'], skills);
+  const got = tl.map(x => `${x.tuneId}:${x.on}`).join(' ');
+  if (got !== 'c:2026-10-20 b:2026-10-09 a:2026-09-08 e:null') fail(`timeline: ${got}`);
+  if (learnedThisMonth(tl, '2026-10-23') !== 2) fail(`this month: ${learnedThisMonth(tl, '2026-10-23')}, expected 2`);
+  if (learnedThisMonth(tl, '2026-11-01') !== 0) fail('a new month starts at zero');
+  // A later slip does not remove a tune from the list, or move its day.
+  srs[cardId('a', 'form')] = gradeCard(srs[cardId('a', 'form')], false, '2026-10-21');
+  if (learnedTimeline(srs, ['a'], skills)[0]?.on !== '2026-09-08') fail('a slip must not unlearn a tune or move its day');
+});
+
 check('the ceiling caps the gap after the last answer, and never touches the history', () => {
   for (let i = 0; i < 300; i++) {
     const { card } = run();
@@ -424,6 +446,38 @@ check('no copyrighted material has crept into the data', () => {
       }
     }
   }
+});
+
+// ── Dates, in every timezone ─────────────────────────────────────────────
+// Due dates are UTC calendar days (todayStr), so addDays/dayDiff have to be
+// plain calendar arithmetic wherever the phone is. They were not: local-time
+// arithmetic made "tomorrow" today anywhere east of Greenwich, and lost a day
+// whenever a gap crossed a clock change. One run of this script only sees this
+// machine's timezone, so the app's own helpers are run in a child process
+// under each zone below and compared with arithmetic done in UTC alone.
+const DATE_ZONES = ['UTC', 'Europe/London', 'Europe/Berlin', 'America/New_York', 'America/Los_Angeles', 'Australia/Sydney', 'Pacific/Auckland', 'Asia/Kolkata'];
+function dateErrors(file) {
+  const text = readFileSync(new URL(file, import.meta.url), 'utf8');
+  const grab = id => (text.match(new RegExp(`^\\s*(?:export\\s+)?const\\s+${id}\\s*=.*$`, 'm')) || [''])[0].replace(/^\s*export\s+/, '');
+  const src = [grab('addDays'), grab('dayDiff')].filter(Boolean).join('\n');
+  if (!src.includes('addDays')) return [`addDays not found in ${file}`];
+  const probe = `const f = new Function(process.argv[1] + '; return { addDays, dayDiff: typeof dayDiff === "undefined" ? null : dayDiff };')();
+const ref = (s, n) => { const [y, m, d] = s.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+let out = '';
+for (let i = 0; i < 730 && !out; i++) { const s = ref('2026-01-01', i);
+  for (const n of [-1, 1, 6, 15, 38, 95, 238]) { const w = ref(s, n);
+    if (f.addDays(s, n) !== w) { out = 'addDays(' + s + ', ' + n + ') = ' + f.addDays(s, n) + ', expected ' + w; break; }
+    if (f.dayDiff && f.dayDiff(s, w) !== n) { out = 'dayDiff(' + s + ', ' + w + ') = ' + f.dayDiff(s, w) + ', expected ' + n; break; } } }
+process.stdout.write(out);`;
+  return DATE_ZONES
+    .map(tz => [tz, execFileSync(process.execPath, ['-e', probe, src], { env: { ...process.env, TZ: tz } }).toString()])
+    .filter(([, e]) => e).map(([tz, e]) => `${tz}: ${e}`);
+}
+
+console.log('\ndates — every timezone');
+check('due dates are calendar arithmetic in every timezone', () => {
+  const e = dateErrors('../lib/srs.js');
+  if (e.length) fail(e.join('\n      '));
 });
 
 console.log(failures === 0 ? `\nAll checks passed. ${CORE_TUNES.length} tunes.\n` : `\n${failures} check(s) failed.\n`);

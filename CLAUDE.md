@@ -86,6 +86,10 @@ What differs is only what a **card** is: elsewhere a chord or a shape, here one
 skill on one tune. That is the whole point — the changes to a tune you play
 weekly stay solid while its head quietly comes due.
 
+**Dates are UTC calendar days**, and `addDays` does UTC arithmetic to match
+(see the root CLAUDE.md, *Dates in the SRS trainers*). This file's copy used
+local `setDate`, which lost a day whenever a gap crossed a clock change.
+
 **One answer per card per day** (`gradeCard`). Zak found that tapping Got it
 several times on a tune's page kept pushing the next review further out —
 every tap was a fresh SM-2 success. Now a repeat tap the same day *replaces*
@@ -179,8 +183,15 @@ the obvious way and is wrong: one Shaky would drop a known tune back to
 "learning", which is not what happened — it needs a refresher. Because it is a
 replay of the history, editing or deleting answers moves it (verify pins that
 deleting the answer that completed a tune un-learns it). `on` is null for a
-tune that was already solid before the history was kept. `on` is also the
-groundwork for "learned on" dates and a growth count — not shown yet.
+tune that was already solid before the history was kept.
+
+**Repertoire growth** is built on it: `learnedTimeline()` lists every learned
+tune with its day, newest first, undated ones last, and `learnedThisMonth()`
+counts the current calendar month. Progress shows both ("4 tunes learned · +2
+this month" over the list), and the tune page says "Learned Fri, Oct 9" (or
+"before the history was kept") under the composer. Nothing is stored: it is a
+replay, so it follows any edit to the history, and a later slip neither removes
+a tune from the list nor moves its day (verify pins both).
 
 Learning tunes stay in Today like everything else — Zak's call. **Up next** is
 the fourth group in Mine (between learning and repertoire), and it is a
@@ -223,8 +234,9 @@ answer and make the setting irreversible.
   ordered exactly as Mine is. One repertoire must not appear in two shapes
   depending on which tab you reached it from. Rows tap through to the
   tune — App holds an `openTune` request that `TunesTab` consumes and clears.
-  Then the skill breakdown, the 7-day forecast, and **Recent answers** (the
-  last eight across every tune, tapping through the same way).
+  Then **Repertoire growth** (learned count, +N this month, every learned tune
+  with its day), the skill breakdown, the 7-day forecast, and **Recent
+  answers** (the last eight across every tune, tapping through the same way).
 - **Guide** 📖 — the four skills, the three stages (and that the app sits
   beside iReal Pro / forScore), how reviews and the ceiling work, and a **jam
   mechanics** reference (calling, counting off, head–solos–head,
@@ -314,16 +326,14 @@ pipe-delimited bars *and* three or more absolute chord symbols in a row.
 
 Each serves one of the three jobs; none duplicates iReal Pro or forScore.
 
-1. **Show the repertoire growing** — a "learned on" date per tune and a running
-   count ("14 tunes · +3 this month"). `learnedOn().on` already computes it.
-2. **One refresher per learned tune** instead of four: "play it through" →
+1. **One refresher per learned tune** instead of four: "play it through" →
    Got it, or Shaky + which skill slipped, and only that skill drops back.
    At 40 tunes × 4 skills the queue is 160 cards; this is the fix for that, and
    the biggest change on the list — discuss with Zak before building.
-3. **A link per tune into iReal Pro / forScore**, so a refresher is one tap
+2. **A link per tune into iReal Pro / forScore**, so a refresher is one tap
    from the chart. Check first whether either app opens a specific song by
    URL; if not, a copy-title button.
-4. **"N refreshers due" on the launcher** — needs a hook in `@fretworks/design`.
+3. **"N refreshers due" on the launcher** — needs a hook in `@fretworks/design`.
 
 ## Before shipping any change
 

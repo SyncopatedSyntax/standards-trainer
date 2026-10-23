@@ -94,6 +94,7 @@ export default function GuideTab() {
         <p style={{ margin: 0 }}>
           <b style={{ color: '#fff' }}>Up next</b> is a plain list of what you plan to learn, so the
           repertoire grows in a direction. Add a tune from its page; starting it takes it off.
+          Progress keeps the other end: every tune you have learned, and the day you learned it.
         </p>
       </Section>
 

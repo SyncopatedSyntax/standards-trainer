@@ -1,11 +1,11 @@
 // How far along you are — and the one number that matters before a jam:
 // how many tunes you could actually call tonight.
 
-import { useMemo } from 'react';
-import { panel, labelCss, EmptyState } from '../components/ui.jsx';
+import { useMemo, useState } from 'react';
+import { btn, panel, labelCss, EmptyState } from '../components/ui.jsx';
 import TuneStatus, { groupByStage, STAGES } from '../components/TuneStatus.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { stats, forecast, tuneIsReady, todayStr, recentAnswers, dayLabel } from '../lib/srs.js';
+import { stats, forecast, tuneIsReady, todayStr, recentAnswers, dayLabel, learnedTimeline, learnedThisMonth } from '../lib/srs.js';
 
 export default function ProgressTab({ tunes, byId, active, upNext, srs, skills, onGoTunes, onGoTune }) {
   const today = todayStr();
@@ -17,6 +17,9 @@ export default function ProgressTab({ tunes, byId, active, upNext, srs, skills, 
   // reached it from.
   const stages = useMemo(() => groupByStage(active, srs, skills, today), [active, srs, skills, today]);
   const planned = upNext.filter(id => !active.includes(id)).length;
+  const timeline = useMemo(() => learnedTimeline(srs, active, skills), [srs, active, skills]);
+  const thisMonth = learnedThisMonth(timeline, today);
+  const [allLearned, setAllLearned] = useState(false);
   const recent = useMemo(() => recentAnswers(srs, active, skills, 8), [srs, active, skills]);
   const skillLabel = useMemo(() => Object.fromEntries(skills.map(k => [k.id, k.label])), [skills]);
 
@@ -91,6 +94,43 @@ export default function ProgressTab({ tunes, byId, active, upNext, srs, skills, 
           <div onClick={onGoTunes} style={{ fontSize: '11px', color: '#8a88a0', marginTop: '9px', cursor: 'pointer' }}>
             + {planned} tune{planned === 1 ? '' : 's'} up next — see the Tunes tab
           </div>
+        )}
+      </div>
+
+      {/* The repertoire growing — the app's reason to exist. Every learned tune
+          with the day it was learned, newest first (lib/srs.js learnedOn). */}
+      <div style={{ ...panel, marginBottom: '12px' }}>
+        <div style={labelCss}>Repertoire growth</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ fontSize: '22px', fontWeight: 900, color: '#fff', fontFamily: 'var(--font-heading)' }}>{timeline.length}</div>
+          <div style={{ fontSize: '12px', color: '#999' }}>tune{timeline.length === 1 ? '' : 's'} learned</div>
+          {thisMonth > 0 && <div style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: 800, color: ACCENT }}>+{thisMonth} this month</div>}
+        </div>
+        {timeline.length === 0 ? (
+          <div style={{ fontSize: '11.5px', color: '#888', marginTop: '6px', lineHeight: 1.6 }}>
+            None yet. A tune counts as learned the first day all four skills are solid at once — and stays learned, even if it later needs a refresher.
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', marginTop: '8px' }}>
+              {(allLearned ? timeline : timeline.slice(0, 8)).map(e => {
+                const t = byId.get(e.tuneId);
+                return (
+                  <div key={e.tuneId} onClick={() => onGoTune?.(e.tuneId)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 0', borderTop: '1px solid #1f1d2e', cursor: onGoTune ? 'pointer' : 'default', touchAction: 'manipulation' }}>
+                    <span style={{ color: ACCENT, fontSize: '12px' }}>✓</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: '12.5px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t?.title || e.tuneId}</span>
+                    <span style={{ fontSize: '11px', color: '#888', whiteSpace: 'nowrap' }}>{e.on ? dayLabel(e.on, today) : 'before the history'}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {timeline.length > 8 && (
+              <button onClick={() => setAllLearned(a => !a)} style={{ ...btn(false), width: '100%', minHeight: '40px', marginTop: '6px' }}>
+                {allLearned ? 'Show fewer' : `Show all ${timeline.length}`}
+              </button>
+            )}
+          </>
         )}
       </div>
 

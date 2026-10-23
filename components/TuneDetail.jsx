@@ -7,7 +7,7 @@ import { btn, panel, labelCss, TextArea } from './ui.jsx';
 import AnswerHistory from './AnswerHistory.jsx';
 import { StageBadge, UP_NEXT } from './TuneStatus.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { cardId, isSkillSolid, todayStr, tuneStage, relativeDay, gradedToday } from '../lib/srs.js';
+import { cardId, isSkillSolid, todayStr, tuneStage, learnedOn, relativeDay, gradedToday, dayLabel } from '../lib/srs.js';
 
 export default function TuneDetail({ tune, active, upNext, srs, notes, skills, onBack, onActivate, onDeactivate, onSetNote, onToggleNext, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, onRemoveCustom }) {
   const today = todayStr();
@@ -15,6 +15,7 @@ export default function TuneDetail({ tune, active, upNext, srs, notes, skills, o
   const planned = !isActive && upNext.includes(tune.id);
   const stage = isActive ? tuneStage(srs, tune.id, skills, today) : planned ? 'next' : null;
   const ready = stage === 'repertoire';
+  const learned = isActive && stage !== 'learning' ? learnedOn(srs, tune.id, skills) : null;
   const [confirmDrop, setConfirmDrop] = useState(false);
 
   const fact = (k, v) => (
@@ -34,6 +35,11 @@ export default function TuneDetail({ tune, active, upNext, srs, notes, skills, o
           <StageBadge stage={stage} />
         </div>
         <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{tune.composer}</div>
+        {learned && (
+          <div style={{ fontSize: '11.5px', color: ACCENT, marginTop: '4px' }}>
+            {learned.on ? `Learned ${dayLabel(learned.on, today).replace(/^(Today|Yesterday)$/, s => s.toLowerCase())}` : 'Learned before the history was kept'}
+          </div>
+        )}
         <div style={{ marginTop: '10px', borderTop: '1px solid #1a1928', paddingTop: '8px' }}>
           {fact('Usual key', tune.key === 'modal' ? 'modal — no single key' : tune.key)}
           {fact('Form', `${tune.form === 'through' ? 'through-composed' : tune.form} · ${tune.bars} bars`)}
