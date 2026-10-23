@@ -1,5 +1,13 @@
 // The repertoire. Two things in one list: the shipped curriculum, in teaching
 // order, and whatever you have taken on — including tunes you added yourself.
+//
+// Adding a tune means the core path first, your own tune only as a fallback.
+// Mine opens with "+ Add a tune", which goes to the core path rather than to a
+// blank form; a search in Mine falls through to the core path's matches; and
+// "add your own" lives at the END of the core path, or appears when a search
+// finds nothing anywhere — with what you typed already in the title. It used to
+// sit at the foot of Mine, where it was both the most prominent way to add a
+// tune and, once the list grew, the hardest to reach.
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import TuneDetail from '../components/TuneDetail.jsx';
@@ -19,6 +27,8 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
   const [filter, setFilter] = useState(() => (active.length || upNext.length ? 'mine' : 'core'));
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
+  const [pickHint, setPickHint] = useState(false);   // arrived at the core path via "+ Add a tune"
+
   const [draft, setDraft] = useState({ title: '', composer: '', key: '', form: 'AABA', bars: 32, feel: '' });
   const savedScrollY = useRef(0);
 
@@ -30,6 +40,15 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
     if (q) r = r.filter(t => t.title.toLowerCase().includes(q) || (t.composer || '').toLowerCase().includes(q));
     return r;
   }, [tunes, active, upNext, filter, search]);
+  const q = search.trim();
+  // Searching Mine for a tune you have not taken on yet: show the core path's
+  // matches under your own, rather than "no results".
+  const coreMatches = useMemo(() => {
+    if (filter !== 'mine' || !q) return [];
+    const lq = q.toLowerCase();
+    return tunes.filter(t => !t.custom && !active.includes(t.id) && !upNext.includes(t.id)
+      && (t.title.toLowerCase().includes(lq) || (t.composer || '').toLowerCase().includes(lq)));
+  }, [tunes, active, upNext, filter, q]);
 
   const today = todayStr();
 
@@ -47,6 +66,7 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
         ...STAGES.filter(s => s.id !== 'repertoire').map(s => ({ tier: head(s), tunes: st[s.id].map(id => byId.get(id)) })),
         { tier: head(UP_NEXT), tunes: nextIds.map(id => byId.get(id)) },
         { tier: head(STAGES.find(s => s.id === 'repertoire')), tunes: st.repertoire.map(id => byId.get(id)) },
+        { tier: { n: 'core-match', label: 'In the core path', blurb: 'Not yours yet. Tap one to start learning it, or put it on Up next.', colour: '#8a88a0' }, tunes: coreMatches },
       ].filter(g => g.tunes.length);
     }
     const out = [];
@@ -57,7 +77,8 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
     const custom = list.filter(t => t.custom);
     if (custom.length) out.push({ tier: { n: 0, label: 'Your own tunes', blurb: 'Added by you — they schedule exactly like the rest.' }, tunes: custom });
     return out;
-  }, [list, filter, srs, skills, today, active, upNext, byId]);
+  }, [list, filter, srs, skills, today, active, upNext, byId, coreMatches]);
+  const noResults = !!q && grouped.every(g => !g.tunes.length);
   const counts = useMemo(() => {
     const st = groupByStage(active, srs, skills, today);
     return { learned: st.refresher.length + st.repertoire.length, learning: st.learning.length, next: upNext.filter(id => !active.includes(id)).length };
@@ -100,13 +121,32 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
     });
     setDraft({ title: '', composer: '', key: '', form: 'AABA', bars: 32, feel: '' });
     setAdding(false);
+    setSearch('');
+    setPickHint(false);
     setFilter('mine');
   };
+
+  const ownForm = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={labelCss}>Add a tune of your own</div>
+      <Field label="Title" value={draft.title} onChange={v => setDraft({ ...draft, title: v })} placeholder="e.g. Bye Bye Blackbird" />
+      <Field label="Composer" value={draft.composer} onChange={v => setDraft({ ...draft, composer: v })} placeholder="optional" />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ flex: 1 }}><Field label="Key" value={draft.key} onChange={v => setDraft({ ...draft, key: v })} placeholder="F" /></div>
+        <div style={{ flex: 1 }}><Field label="Bars" value={String(draft.bars)} onChange={v => setDraft({ ...draft, bars: v.replace(/\D/g, '') })} placeholder="32" /></div>
+      </div>
+      <Field label="Feel" value={draft.feel} onChange={v => setDraft({ ...draft, feel: v })} placeholder="Medium swing" />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={saveNew} disabled={!draft.title.trim()} style={{ ...btn(true), flex: 1, opacity: draft.title.trim() ? 1 : 0.4 }}>Add it</button>
+        <button onClick={() => setAdding(false)} style={btn(false)}>Cancel</button>
+      </div>
+    </div>
+  );
 
   const pill = (id, label, n) => {
     const on = filter === id;
     return (
-      <button key={id} onClick={() => setFilter(id)}
+      <button key={id} onClick={() => { setFilter(id); setPickHint(false); }}
         style={{ padding: '5px 11px', borderRadius: '20px', cursor: 'pointer', fontSize: '11px', fontWeight: 700, border: `1px solid ${on ? ACCENT : '#2a2840'}`, background: on ? ACCENT + '22' : '#13121f', color: on ? ACCENT : '#777' }}>
         {label}{n != null && <span style={{ opacity: 0.7 }}> ({n})</span>}
       </button>
@@ -115,11 +155,19 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
 
   return (
     <div style={{ padding: '14px', maxWidth: '640px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: '16px', fontWeight: 900, color: '#fff' }}>Tunes</div>
-        <div style={{ color: '#999', fontSize: '11px' }}>
-          {counts.learned} learned · {counts.learning} learning{counts.next ? ` · ${counts.next} up next` : ''}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '16px', fontWeight: 900, color: '#fff' }}>Tunes</div>
+          <div style={{ color: '#999', fontSize: '11px', marginTop: '1px' }}>
+            {counts.learned} learned · {counts.learning} learning{counts.next ? ` · ${counts.next} up next` : ''}
+          </div>
         </div>
+        {/* At the top, so it never sinks below a growing list — and it opens
+            the core path, not a blank form. */}
+        {filter === 'mine' && (
+          <button onClick={() => { setFilter('core'); setSearch(''); setPickHint(true); setAdding(false); if (scrollRef?.current) scrollRef.current.scrollTop = 0; }}
+            style={{ ...btn(true), minHeight: '40px', padding: '6px 12px', flexShrink: 0 }}>+ Add a tune</button>
+        )}
       </div>
 
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by title or composer…"
@@ -131,7 +179,15 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
         {pill('all', 'All', tunes.length)}
       </div>
 
-      {filter === 'mine' && active.length === 0 && counts.next === 0 && (
+      {pickHint && filter === 'core' && (
+        <div className="st-pop" style={{ ...panel, borderColor: ACCENT + '55', marginBottom: '12px', fontSize: '12px', color: '#c8c6da', lineHeight: 1.6 }}>
+          <b style={{ color: ACCENT }}>Pick a tune to learn.</b> Tap one, then <b style={{ color: '#fff' }}>Start learning this</b> or
+          {' '}<b style={{ color: '#fff' }}>Add to Up next</b>. Search above if you know the title. Not here at all?
+          You can add your own at the bottom.
+        </div>
+      )}
+
+      {filter === 'mine' && !q && active.length === 0 && counts.next === 0 && (
         <div style={{ ...panel, textAlign: 'center', marginBottom: '12px' }}>
           <div style={{ fontSize: '30px', marginBottom: '6px' }}>🎺</div>
           <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>No tunes yet</div>
@@ -177,27 +233,35 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
         </div>
       ))}
 
-      {/* Add your own */}
-      <div style={panel}>
-        {adding ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={labelCss}>Add a tune</div>
-            <Field label="Title" value={draft.title} onChange={v => setDraft({ ...draft, title: v })} placeholder="e.g. Bye Bye Blackbird" />
-            <Field label="Composer" value={draft.composer} onChange={v => setDraft({ ...draft, composer: v })} placeholder="optional" />
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <div style={{ flex: 1 }}><Field label="Key" value={draft.key} onChange={v => setDraft({ ...draft, key: v })} placeholder="F" /></div>
-              <div style={{ flex: 1 }}><Field label="Bars" value={String(draft.bars)} onChange={v => setDraft({ ...draft, bars: v.replace(/\D/g, '') })} placeholder="32" /></div>
-            </div>
-            <Field label="Feel" value={draft.feel} onChange={v => setDraft({ ...draft, feel: v })} placeholder="Medium swing" />
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={saveNew} disabled={!draft.title.trim()} style={{ ...btn(true), flex: 1, opacity: draft.title.trim() ? 1 : 0.4 }}>Add it</button>
-              <button onClick={() => setAdding(false)} style={btn(false)}>Cancel</button>
-            </div>
-          </div>
-        ) : (
-          <button onClick={() => setAdding(true)} style={{ ...btn(false), width: '100%' }}>+ Add a tune of your own</button>
-        )}
-      </div>
+      {/* Your own tune — the fallback, never the first choice. Either a search
+          found nothing anywhere (title pre-filled), or you have reached the end
+          of the core path. Not in Mine: there it outranked the core path, and
+          sank out of reach as the list grew. */}
+      {noResults ? (
+        <div style={panel}>
+          {adding ? ownForm : (
+            <>
+              <div style={{ fontSize: '12.5px', color: '#bbb', lineHeight: 1.6, marginBottom: '10px' }}>
+                Nothing called <b style={{ color: '#fff' }}>“{q}”</b> {filter === 'mine' ? 'in your tunes or the core path' : filter === 'core' ? 'in the core path' : 'here'}.
+                {filter === 'core' && ' Check the spelling, or try the composer.'}
+              </div>
+              <button onClick={() => { setDraft(d => ({ ...d, title: q })); setAdding(true); }}
+                style={{ ...btn(false), width: '100%', minHeight: '40px' }}>+ Add “{q}” as your own tune</button>
+            </>
+          )}
+        </div>
+      ) : filter !== 'mine' && (
+        <div style={panel}>
+          {adding ? ownForm : (
+            <>
+              <div style={{ fontSize: '11.5px', color: '#888', lineHeight: 1.6, marginBottom: '8px' }}>
+                Not in the core path? Add it yourself — it schedules exactly like the rest.
+              </div>
+              <button onClick={() => setAdding(true)} style={{ ...btn(false), width: '100%', minHeight: '40px' }}>+ Add a tune of your own</button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
