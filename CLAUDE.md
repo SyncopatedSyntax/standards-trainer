@@ -157,10 +157,8 @@ had exactly that bug and now pass `timeZone: 'UTC'` too.
 
 Feedback, because a tap that leaves no trace reads as a tap that did not
 register: the tune page lights the chosen button and adds a "Saved for today —
-next review …" line with Undo; Today shows a floating toast with Undo, since
-the card has already moved on. Today also ignores taps for 500 ms after an
-answer — the card swaps instantly, so a double tap used to grade the *next*
-card unseen.
+next review …" line with Undo; on Today the answered row turns into a line
+with the result, the next review and Undo (see Tabs).
 
 `tuneIsReady()` = all four skills at `reps >= 2`, the same "learned" bar
 Diatonic uses. That drives the Progress tab's headline number: how many tunes
@@ -215,9 +213,20 @@ answer and make the setting irreversible.
 
 ## Tabs
 
-- **Today** 🌅 — the due queue, one card at a time. The set is **snapshotted at
-  mount** (as Focused's TodayTab does): grading rewrites the schedule, and
-  without the snapshot the list reorders underneath you mid-session.
+- **Today** 🌅 — everything due, as **one card per tune with its due skills
+  on it**, answered in any order. It used to be one card at a time, which made
+  the queue choose what Zak practised; he works a tune at a time in iReal Pro
+  and wants to pick the tune and the skill. A chip row (All · Head · Changes ·
+  Form · Solo, each with what is left) narrows the list to one area across all
+  tunes. Tunes are ordered by their most overdue skill (`dueCards`' order,
+  never-seen last); skills in their usual order. The set is **snapshotted at
+  mount** (as Focused's TodayTab does): grading moves a due date, and without
+  the snapshot the row you just answered would vanish and the list would jump.
+  An answered row stays in place as one line — result, "back tomorrow", Undo —
+  which is also the feedback that the tap registered (the floating toast and
+  the 500 ms double-tap lock went with the one-card layout: rows no longer swap
+  under your finger). The tune title opens its page; the guitar tip (one per
+  tune, rotating daily) and your notes sit behind a tap.
 - **Tunes** 🎵 — the repertoire. **Opens on Mine once anything is active or
   planned**; the core path is the right first screen exactly once. Mine is
   grouped by **stage** — Needs a refresher · Learning · Up next · In repertoire
@@ -291,9 +300,9 @@ invisible until each consumer is repinned. It fails quietly. See
 Every tune carries `facts[]` (2–3 researched notes on where it came from) and
 `guitar[]` (2–3 things to actually do with it on this instrument). They are
 separate fields, and separate panels in the UI, because mixing them buries the
-practical half under the trivia. The Today card shows **one** guitar note,
-picked by the skill's index rather than at random, so a tune's four cards
-surface different advice instead of repeating one tip four times.
+practical half under the trivia. Today shows **one** guitar note per
+tune card, rotating by day, so the same tune surfaces different advice on
+different days instead of repeating one tip.
 
 **These were researched, not invented, and the next edit must be too.** Every
 fact came from a source that was actually read — publication dates, session
@@ -351,4 +360,4 @@ Each serves one of the three jobs; none duplicates iReal Pro or forScore.
 - `npm run verify` must pass — especially the no-copyrighted-material check.
 - `npm run build` must pass.
 - Verify at ~393px in the browser; the tune detail, the Mine list and the
-  Today card are the screens that matter.
+  Today list are the screens that matter.

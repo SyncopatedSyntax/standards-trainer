@@ -243,7 +243,7 @@ export default function App() {
 
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'none' }}>
         <div style={{ paddingBottom: 'max(32px,env(safe-area-inset-bottom))' }}>
-          {tab === 'today' && <TodayTab {...shared} onGrade={grade} onUngrade={ungrade} onGoTunes={() => goTab('tunes')} scrollRef={scrollRef} />}
+          {tab === 'today' && <TodayTab {...shared} onGrade={grade} onUngrade={ungrade} onGoTunes={() => goTab('tunes')} onGoTune={goTune} />}
           {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onToggleNext={toggleNext} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} onEditAnswer={editAns} onDeleteAnswer={deleteAns} onClearEarlier={clearEarly} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
           {tab === 'progress' && <ProgressTab {...shared} onGoTunes={() => goTab('tunes')} onGoTune={goTune} />}
           {tab === 'guide' && <GuideTab />}
