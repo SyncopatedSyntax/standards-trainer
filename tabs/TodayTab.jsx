@@ -6,10 +6,8 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { btn, panel, labelCss, EmptyState } from '../components/ui.jsx';
-import BarGrid from '../components/BarGrid.jsx';
 import { ACCENT } from '../lib/tool.js';
 import { dueCards, todayStr, relativeDay } from '../lib/srs.js';
-import { chartFor, isChartEmpty } from '../lib/chart.js';
 
 // What you just answered, floating at the foot of the screen. The card has
 // already moved on by the time you read it, so without this a tap leaves no
@@ -28,7 +26,7 @@ function GradedToast({ toast, srs, onUndo }) {
   );
 }
 
-export default function TodayTab({ tunes, byId, active, srs, notes, charts, skills, onGrade, onUngrade, onGoTunes }) {
+export default function TodayTab({ tunes, byId, active, srs, notes, skills, onGrade, onUngrade, onGoTunes }) {
   // Snapshot: computed once, from the schedule as it stood when the tab opened.
   const [queue] = useState(() => dueCards(srs, active, skills));
   const [done, setDone] = useState({});   // cardId -> true|false, this session
@@ -82,11 +80,6 @@ export default function TodayTab({ tunes, byId, active, srs, notes, charts, skil
   const tune = byId.get(current.tuneId);
   const skill = skillById.get(current.skill);
   const note = notes[current.tuneId];
-  // Behind a <details> on purpose. The card asks you to play the thing from
-  // memory, so the chart being one tap away is the difference between a hint
-  // and an answer key.
-  const chart = tune ? chartFor(charts, tune) : null;
-  const hasChart = chart && !isChartEmpty(chart);
   const skillIdx = skills.findIndex(s => s.id === current.skill);
   const tip = tune?.guitar?.length ? tune.guitar[Math.max(0, skillIdx) % tune.guitar.length] : null;
 
@@ -123,7 +116,7 @@ export default function TodayTab({ tunes, byId, active, srs, notes, charts, skil
           {skill?.blurb}
         </div>
         <div style={{ fontSize: '11px', color: '#777', marginTop: '10px', lineHeight: 1.6 }}>
-          Put the phone down and actually play it. Then answer honestly — the schedule is only as good as the grading.
+          Play it — from memory, or along with iReal Pro. Then answer honestly: the schedule is only as good as the grading.
         </div>
       </div>
 
@@ -138,17 +131,13 @@ export default function TodayTab({ tunes, byId, active, srs, notes, charts, skil
         </div>
       )}
 
-      {(hasChart || note) && (
+      {/* Behind a <details> on purpose. The card asks you to play the thing
+          from memory, so your notes being one tap away is the difference
+          between a hint and an answer key. */}
+      {note && (
         <details style={{ ...panel, marginBottom: '12px' }}>
-          <summary style={{ ...labelCss, marginBottom: 0, cursor: 'pointer' }}>
-            {hasChart ? 'The changes' : 'Your notes'} — peek only if stuck
-          </summary>
-          <div style={{ marginTop: '11px' }}>
-            {hasChart && <BarGrid chart={chart} compact />}
-            {note && (
-              <pre style={{ fontSize: '12px', color: '#bbb', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: hasChart ? '12px' : 0, lineHeight: 1.7 }}>{note}</pre>
-            )}
-          </div>
+          <summary style={{ ...labelCss, marginBottom: 0, cursor: 'pointer' }}>Your notes — peek only if stuck</summary>
+          <pre style={{ fontSize: '12px', color: '#bbb', fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '11px 0 0', lineHeight: 1.7 }}>{note}</pre>
         </details>
       )}
 

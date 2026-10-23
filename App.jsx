@@ -13,8 +13,9 @@ import { TabBar } from '@fretworks/design';
 import StandardsHeader from './components/StandardsHeader.jsx';
 import { TOOL, ACCENT } from './lib/tool.js';
 import { CORE_TUNES, SKILLS } from './data/tunes.js';
-import { K_ACTIVE, K_SRS, K_NOTES, K_CUSTOM, K_CHARTS, read, write } from './lib/store.js';
-import { gradeCard, ungradeCard, editAnswer, deleteAnswer, clearEarlier, cardId } from './lib/srs.js';
+import { K_ACTIVE, K_SRS, K_NOTES, K_CUSTOM, K_NEXT, K_SETTINGS, read, write } from './lib/store.js';
+import { gradeCard, ungradeCard, editAnswer, deleteAnswer, clearEarlier, cardId, withMaxGap, DEFAULT_MAX_GAP } from './lib/srs.js';
+import { migrateCharts } from './lib/migrate.js';
 import TodayTab from './tabs/TodayTab.jsx';
 import TunesTab from './tabs/TunesTab.jsx';
 import ProgressTab from './tabs/ProgressTab.jsx';
@@ -39,7 +40,8 @@ export default function App() {
   const [srs, setSrs] = useState({});
   const [notes, setNotes] = useState({});
   const [custom, setCustom] = useState([]);
-  const [charts, setCharts] = useState({});
+  const [upNext, setUpNext] = useState([]);
+  const [settings, setSettings] = useState({});
   // A tune the user asked to open from another tab. TunesTab owns the actual
   // detail-view state; this is just the request, cleared once it lands.
   const [openTune, setOpenTune] = useState(null);
@@ -50,14 +52,15 @@ export default function App() {
   const srsRef = useRef(srs); srsRef.current = srs;
   const activeRef = useRef(active); activeRef.current = active;
   const notesRef = useRef(notes); notesRef.current = notes;
-  const chartsRef = useRef(charts); chartsRef.current = charts;
+  const nextRef = useRef(upNext); nextRef.current = upNext;
 
   useEffect(() => {
     setActive(read(K_ACTIVE, []));
     setSrs(read(K_SRS, {}));
-    setNotes(read(K_NOTES, {}));
+    setNotes(migrateCharts(read(K_NOTES, {})));
     setCustom(read(K_CUSTOM, []));
-    setCharts(read(K_CHARTS, {}));
+    setUpNext(read(K_NEXT, []));
+    setSettings(read(K_SETTINGS, {}));
     setLoaded(true);
   }, []);
 
@@ -74,7 +77,29 @@ export default function App() {
     if (activeRef.current.includes(id)) return;
     const next = [...activeRef.current, id];
     setActive(next); write(K_ACTIVE, next);
+    // Starting a tune takes it off Up next: it is being learned now.
+    if (nextRef.current.includes(id)) {
+      const n = nextRef.current.filter(x => x !== id);
+      setUpNext(n); write(K_NEXT, n);
+    }
   }, []);
+
+  // Up next: tunes you plan to learn. Nothing is scheduled for them — it is a
+  // list, kept in the order you added to it.
+  const toggleNext = useCallback(id => {
+    const cur = nextRef.current;
+    const n = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    setUpNext(n); write(K_NEXT, n);
+  }, []);
+
+  // Written only when changed; an absent setting reads as the default.
+  const setMaxGap = useCallback(days => {
+    setSettings(prev => { const s = { ...prev, maxGap: days }; write(K_SETTINGS, s); return s; });
+  }, []);
+  const maxGap = settings.maxGap === undefined ? DEFAULT_MAX_GAP : settings.maxGap;
+  // Every screen reads the schedule through the refresher ceiling; grading
+  // and history edits go to the raw cards via srsRef (lib/srs.js capDue).
+  const srsView = useMemo(() => withMaxGap(srs, maxGap), [srs, maxGap]);
 
   // Dropping a tune removes its cards too. Keeping orphaned SRS state would
   // resurrect old intervals if it were ever taken back on, which reads as a
@@ -108,11 +133,6 @@ export default function App() {
     setNotes(n); write(K_NOTES, n);
   }, []);
 
-  const setChart = useCallback((tuneId, chart) => {
-    const c = { ...chartsRef.current, [tuneId]: chart };
-    setCharts(c); write(K_CHARTS, c);
-  }, []);
-
   const addTune = useCallback(tune => {
     setCustom(prev => { const next = [...prev, tune]; write(K_CUSTOM, next); return next; });
     activate(tune.id);
@@ -121,7 +141,8 @@ export default function App() {
   const removeCustom = useCallback(id => {
     setCustom(prev => { const next = prev.filter(t => t.id !== id); write(K_CUSTOM, next); return next; });
     deactivate(id);
-  }, [deactivate]);
+    if (nextRef.current.includes(id)) toggleNext(id);
+  }, [deactivate, toggleNext]);
 
   const goTab = id => { setTab(id); if (scrollRef.current) scrollRef.current.scrollTop = 0; };
   const goTune = id => { setOpenTune(id); goTab('tunes'); };
@@ -179,18 +200,14 @@ export default function App() {
       const scroller = scrollRef.current;
       if (!scroller) return;
       const inset = vv ? Math.max(0, window.innerHeight - (vv.offsetTop + vv.height)) : 0;
-      // A focused field may have an accessory bar floating above the keyboard
-      // (the chart's chord keypad). It publishes its height here, and it
-      // covers the page just as the keyboard does, so it counts as inset too.
-      const acc = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kbd-accessory')) || 0;
-      const want = isFormField(document.activeElement) ? inset + acc : 0;
+      const want = isFormField(document.activeElement) ? inset : 0;
       if (scroller.style.paddingBottom !== `${want}px`) scroller.style.paddingBottom = `${want}px`;
 
       const el = document.activeElement;
       if (!isFormField(el) || !scroller.contains(el)) return;
       const r = el.getBoundingClientRect();
       const top = vv ? vv.offsetTop : 0;
-      const bottom = top + (vv ? vv.height : window.innerHeight) - acc;
+      const bottom = top + (vv ? vv.height : window.innerHeight);
       const M = 16;
       if (r.bottom > bottom - M) scroller.scrollTop += r.bottom - bottom + M;
       else if (r.top < top + M) scroller.scrollTop -= top + M - r.top;
@@ -217,7 +234,7 @@ export default function App() {
     <div style={{ background: '#0f0e17', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ACCENT, fontSize: '16px' }}>Loading…</div>
   );
 
-  const shared = { tunes, byId, active, srs, notes, charts, skills: SKILLS };
+  const shared = { tunes, byId, active, upNext, srs: srsView, notes, skills: SKILLS };
 
   return (
     <div style={{ background: '#0f0e17', height: '100dvh', display: 'flex', flexDirection: 'column', color: '#fffffe', fontFamily: 'var(--font-body)', WebkitFontSmoothing: 'antialiased' }}>
@@ -227,10 +244,10 @@ export default function App() {
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'none' }}>
         <div style={{ paddingBottom: 'max(32px,env(safe-area-inset-bottom))' }}>
           {tab === 'today' && <TodayTab {...shared} onGrade={grade} onUngrade={ungrade} onGoTunes={() => goTab('tunes')} scrollRef={scrollRef} />}
-          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onSetChart={setChart} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} onEditAnswer={editAns} onDeleteAnswer={deleteAns} onClearEarlier={clearEarly} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
+          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onToggleNext={toggleNext} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} onEditAnswer={editAns} onDeleteAnswer={deleteAns} onClearEarlier={clearEarly} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
           {tab === 'progress' && <ProgressTab {...shared} onGoTunes={() => goTab('tunes')} onGoTune={goTune} />}
           {tab === 'guide' && <GuideTab />}
-          {tab === 'settings' && <SettingsTab />}
+          {tab === 'settings' && <SettingsTab maxGap={maxGap} onSetMaxGap={setMaxGap} />}
         </div>
       </div>
     </div>

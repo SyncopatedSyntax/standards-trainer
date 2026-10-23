@@ -7,6 +7,20 @@ DiatonicChordsTrainer, MelodicMinorTrainer, AlteredTrainer, Circle of Fifths).
 Single dev + end user: Zak. The goal it serves is concrete — turn up to a jam
 and be able to call a tune.
 
+## What it is for — and what it is not
+
+**It accompanies other practice apps; it does not replace them.** Zak practises
+with iReal Pro, forScore and a Real Book. Those hold the music — charts,
+backing tracks, tempo, keys. This app is the logbook beside them, with three
+jobs, in Zak's words: keep track of which standards **need a refresher**, which
+are **currently being learnt**, and which are **done learning** — so the
+repertoire grows without anything being forgotten.
+
+So features that belong in those apps do not belong here: no chart editor (the
+bar grid and form templates were removed in October 2026 for exactly this
+reason), no play-along, metronome or transposition. Before proposing a feature,
+ask whether it serves one of the three jobs or duplicates the other apps.
+
 - Toolbox-wide conventions (git-dep workflow, multi-zone, single PWA,
   verify-in-prod, naming): the Fretworks root `CLAUDE.md`.
 - The app shell, SRS engine and UI primitives are lifted from
@@ -18,16 +32,13 @@ and be able to call a tune.
 Real Book charts are under copyright. `data/tunes.js` ships each tune's
 **facts** — title, composer, usual key, form, bar count, feel, tempo range —
 because facts are not copyrightable. The melodies and the changes are **not**
-shipped and must never be added; the user types them into his own browser,
-where they stay.
+shipped and must never be added — they live in the apps Zak already uses.
 
 `scripts/verify.mjs` enforces this: a `changes`/`chart`/`melody`/`chords` field
 on a tune, or something that looks like a chart in a prose field, fails the
 build check. That is not paranoia — it is the one mistake that would turn this
 repo into a licensing problem, and it is exactly the kind of "helpful" edit a
 future session might make.
-
-Writing the changes out by hand is also, genuinely, how you learn a form.
 
 ## Data model
 
@@ -44,22 +55,20 @@ this app is covered by both with no extra wiring.
 - `js_srs` — SM-2 state keyed `` `${tuneId}.${skill}` ``, each card carrying its
   own answer log (`hist`) — see *The answer history* below. There is no
   separate history key, so backup and sync carry it with no extra wiring.
-- `js_charts` — the bar grid per tune:
-  `{ [tuneId]: { sections: [{ label, bars: ['Cm7', …] }] } }`. A bar is a plain
-  **string**, so "B♭Δ D7" is simply two chords in one bar — no nested structure
-  invented for the handful of tunes that need it.
-- `js_notes` — free text per tune. It was where the changes went before the
-  grid existed and it stays, now as general notes (which recording, a
-  fingering, the intro). The grid landed *alongside* it, not instead of it, so
-  there was no migration — and `ChartEditor` offers to read pipe-delimited bars
-  back out of a note rather than making anyone retype a form.
+- `js_notes` — free text per tune (which recording, which iReal Pro chart, a
+  fingering, the intro).
 - `js_custom` — tunes the user added, same shape plus `custom: true`.
-
-**Charts are built lazily too.** `chartFor()` returns the blank layout for a
-tune with nothing stored rather than writing one — browsing 40 tunes must not
-fill storage with 40 empty grids. `defaultSections()` derives that layout from
-facts the tune already carries, and ships every bar empty; `verify.mjs` asserts
-both (the right bar count, and no pre-filled bar) for every tune.
+- `js_next` — **Up next**: tune ids Zak plans to learn, in the order added.
+  A list, not a schedule — nothing is created for them. Activating a tune
+  removes it (`activate` in App).
+- `js_settings` — `{ maxGap }`, the refresher ceiling in days (`0` = none).
+  Absent reads as `DEFAULT_MAX_GAP` (60), and it is written only when changed.
+- `js_charts` — **retired** with the bar grid. `lib/migrate.js` runs once from
+  App's load effect: any grid with something typed in it is written into that
+  tune's notes as plain text (`A: | Cm7 | F7 | … |`, four bars a line, a
+  `-` for an empty bar), then the key is removed. Idempotent — a note that
+  already holds the text is left alone, so a second device that also had the
+  grid cannot double it. verify.mjs pins that.
 
 **Cards are created lazily, not on activation.** `dueCards()` treats a missing
 `js_srs` entry as fresh-and-due, so activating a tune writes nothing to the
@@ -153,33 +162,76 @@ card unseen.
 Diatonic uses. That drives the Progress tab's headline number: how many tunes
 you could actually call tonight.
 
+### Stages: learning, in repertoire, needs a refresher
+
+The app's three jobs as data (`tuneStage` in lib/srs.js; labels, colours and
+`groupByStage` in components/TuneStatus.jsx, shared by the Mine list, Progress
+and the tune page's badge so they can never disagree):
+
+- **learning** — never learned.
+- **repertoire** — learned, nothing due, every skill solid.
+- **refresher** — learned, and something is due or a skill is no longer solid.
+
+**"Learned" is a fact about the past.** `learnedOn()` replays each skill's
+answers in date order and finds the first day all four were solid together;
+`tuneIsReady()` only says whether they are solid *now*. Using the latter was
+the obvious way and is wrong: one Shaky would drop a known tune back to
+"learning", which is not what happened — it needs a refresher. Because it is a
+replay of the history, editing or deleting answers moves it (verify pins that
+deleting the answer that completed a tune un-learns it). `on` is null for a
+tune that was already solid before the history was kept. `on` is also the
+groundwork for "learned on" dates and a growth count — not shown yet.
+
+Learning tunes stay in Today like everything else — Zak's call. **Up next** is
+the fourth group in Mine (between learning and repertoire), and it is a
+planning list, never scheduled.
+
+### The refresher ceiling
+
+SM-2 alone spaces a run of Got its 1, 6, 15, 38, 95, 238, 595 days apart: after
+seven, a tune is unseen for a year and a half — the opposite of "not
+forgetting". Settings caps the gap (1, 2, 3 or 6 months, or none; default 2).
+
+**Applied on read, never written.** A card's last answer is always
+`nextDue - interval`, so `capDue()` returns `nextDue` pulled back to last +
+cap. App builds the capped view once (`withMaxGap`, memoised) and passes it as
+`srs` to every screen; grading and history edits still go to the raw cards
+through `srsRef`. So the setting needs no migration, changes every card the
+moment it changes, leaves the stored schedule exactly as the engine made it,
+and can be switched off to get plain SM-2 back. Do not "simplify" this by
+clamping `interval` inside `updateSRS` — that would rewrite history on every
+answer and make the setting irreversible.
+
 ## Tabs
 
 - **Today** 🌅 — the due queue, one card at a time. The set is **snapshotted at
   mount** (as Focused's TodayTab does): grading rewrites the schedule, and
   without the snapshot the list reorders underneath you mid-session.
-- **Tunes** 🎵 — the repertoire. **Opens on Mine once anything is active**; the
-  core path is the right first screen exactly once. Mine is one flat list
-  ordered by `byAttention` (due count, then soonest review) — a handful of
-  tunes spread across five tier headings is chrome, not information. Core and
-  All stay grouped by tier, because there the curriculum's shape *is* the
-  point. Tune detail is pushed from here, not a tab. **Every hook must run
+- **Tunes** 🎵 — the repertoire. **Opens on Mine once anything is active or
+  planned**; the core path is the right first screen exactly once. Mine is
+  grouped by **stage** — Needs a refresher · Learning · Up next · In repertoire
+  — each in `byAttention` order (due count, then soonest review); tier headings
+  there would be chrome, not information. The header counts learned / learning
+  / up next. Core and All stay grouped by tier, because there the
+  curriculum's shape *is* the point. Tune detail is pushed from here, not a
+  tab. **Every hook must run
   before the early return that swaps in `TuneDetail`** — a `useMemo` below it
   renders fewer hooks on the renders where a tune is open, which is how this
   shipped broken the first time.
-- **Progress** 📊 — tunes you could call tonight, then **Working on**: every
-  active tune with its four skill dots and what it wants, in the same
-  `byAttention` order the Tunes tab uses. One repertoire must not appear in two
-  orders depending on which tab you reached it from. Rows tap through to the
+- **Progress** 📊 — tunes you could call tonight, then **Your repertoire**:
+  the three stage counts, then every active tune under its stage, grouped and
+  ordered exactly as Mine is. One repertoire must not appear in two shapes
+  depending on which tab you reached it from. Rows tap through to the
   tune — App holds an `openTune` request that `TunesTab` consumes and clears.
   Then the skill breakdown, the 7-day forecast, and **Recent answers** (the
   last eight across every tune, tapping through the same way).
-- **Guide** 📖 — the four skills, how reviews work, why you type the changes in,
-  and a **jam mechanics** reference (calling, counting off, head–solos–head,
+- **Guide** 📖 — the four skills, the three stages (and that the app sits
+  beside iReal Pro / forScore), how reviews and the ceiling work, and a **jam
+  mechanics** reference (calling, counting off, head–solos–head,
   comping behind a soloist, trading fours, endings, holding the form). Text
   only, deliberately not tracked: most of it is learn-once rather than per-tune,
   so scheduling it per tune would be noise.
-- **Settings** ⚙️ — `ProgressBackup`, build stamp.
+- **Settings** ⚙️ — the refresher ceiling, `ProgressBackup`, build stamp.
 
 ## The keyboard and the scroll container
 
@@ -190,16 +242,9 @@ container is already at max `scrollTop` — so `apply()` pads the scroller by th
 keyboard's overlap *first*, then scrolls the field into that room. The window
 scroll lock stands down while a field is focused.
 
-Two fields need it: the notes textarea, and every bar in the chart grid.
-
-**The chart's keypad is an accessory bar, and that interacts with the fix.**
-`ChartEditor` pins the Δ ø ° ♭ ♯ keypad above the keyboard with `position:
-fixed; bottom: <keyboard inset>`. But `apply()` scrolls the focused input to
-just above where the keyboard starts — which is exactly where the keypad sits,
-so the bar being typed into ended up underneath it. The bar publishes its
-measured height as `--kbd-accessory` on the root element, and `apply()` adds
-that to both the padding and the bottom margin. One number, one place; do not
-hardcode an estimate at either end.
+It matters most for the notes textarea, the search field and the history's
+date input. (The chart grid's floating chord keypad, and the
+`--kbd-accessory` allowance `apply()` used to make for it, went with the grid.)
 
 ## Fretworks integration
 
@@ -246,8 +291,8 @@ than the rest and worth checking against a chart:
 - **L-O-V-E** as ABAC 32 — no source states the form; it is read from the
   song's structure (the "Love is all that I can give to you" phrase returns to
   the opening).
-- **Work Song** as AB 16 — sixteen bars is sourced; splitting it 8 + 8 is a
-  layout choice for the grid, not a claim from a source.
+- **Work Song** as AB 16 — sixteen bars is sourced; splitting it 8 + 8 is
+  not a claim from a source.
 - **No Moon at All** as AABA 32 — supported only by weak sources.
 Boogie Woogie Bugle Boy is filed as a 12-bar blues on the strength of
 Wikipedia listing it among well-known twelve-bar songs; its sheet music key is
@@ -265,91 +310,24 @@ The copyright guard now also sweeps `facts` and `guitar`. Describing a tune's
 harmony is fine; spelling out its changes is not, so the prose check rejects
 pipe-delimited bars *and* three or more absolute chord symbols in a row.
 
-## Form templates — the one place harmony ships
-
-`data/forms.js` + `lib/roman.js`. Read the header comment in `forms.js` before
-touching either.
-
-**Why these can ship when the tunes cannot.** The curriculum is a 1920s–60s
-body of work. In the US the 95-year term has now freed everything published in
-1930 or earlier — Blue Skies, Bye Bye Blackbird, Exactly Like You and a few
-more — but copyright elsewhere runs for the writers' lives plus seventy years
-(Irving Berlin died in 1989, so the UK protects his songs until the end of
-2059), and a Real Book *chart* is a copyright of its own. So the rule does not
-soften for the old tunes: no tune's changes ship, whatever its date. The
-twelve-bar blues and rhythm changes
-are a different kind of thing: shared idioms that predate and outlive any
-particular tune, which is why the whole practice of writing contrafacts works.
-
-Two rules keep it that way, both enforced by `verify.mjs`:
-
-1. **Templates are written only in roman numerals.** A sequence that renders in
-   all twelve keys is a form; a sequence in one key is a transcription. The
-   verify script rejects an absolute chord name anywhere in `forms.js`.
-2. **A template is never attached to a tune.** `templatesFor()` matches on the
-   tune's *stated form, key quality and section shape* — facts already in
-   `tunes.js` — and the user picks from what fits. The app never claims "these
-   are this tune's changes". Do not add a `template:` field to a tune; that
-   would be an assertion about its harmony, and it is what the copyright guard
-   in `verify.mjs` exists to stop.
-
-The second rule is also the pedagogy, and the more important half. C Jam Blues,
-Blue Monk and Billie's Bounce are all "a 12-bar blues" and all differ; the
-differences are why they are separate entries. So an applied template records
-`from: <templateId>` on the chart and the UI keeps a banner up — *the generic
-form, not this tune's changes* — until the user confirms they have checked it.
-An unlabelled template is indistinguishable from a chart you had actually
-verified, which is the real hazard here, not the legal one.
-
-`verify.mjs` re-derives the jazz blues in F, the minor blues in C minor and
-rhythm changes in B♭ against what a player would write by hand. That is the
-toolbox's standard applied to harmony the app generates.
-
-## The bar grid
-
-`lib/chart.js` + `components/BarGrid.jsx` + `components/ChartEditor.jsx`.
-
-**Each bar is its own `<input>`.** The obvious alternative — one editor docked
-under the grid showing "the current bar" — fails on a phone for the reason the
-fret-button rows failed in Focused Chord Trainer's Build tab: the keyboard
-takes half the screen, the app scrolls the focused input just above it, and the
-grid gets pushed off the top. A grid of real inputs has no gap to open, because
-the thing you type into *is* the bar you are looking at. Read-only mode (no
-`onChange`) renders divs instead, which is what the Today tab's peek panel uses.
-
-Other things that are the way they are on purpose:
-- **Sections are independent, and copying is explicit.** AABA means playing A
-  three times, but the last bars of each A differ — that is what a first and
-  second ending *is*. Linking repeated letters would make endings impossible to
-  write, so a repeated section's heading offers `copySection` instead.
-- **`minmax(0, 1fr)` on the grid columns.** A plain `1fr` track takes its
-  automatic minimum from its content, so one long chord symbol would stretch
-  the line past the viewport. Same trap as Focused's Build tab.
-- **Bar inputs stay at the global 16px.** The app's stylesheet pins every input
-  to 16px so iOS does not zoom the page on focus. Do not shrink them to fit
-  more text; the input scrolls instead.
-- **Imports never change the shape of the form.** `fillBars` drops extra bars
-  rather than growing the grid: the form comes from the tune's facts, and a
-  paste that disagrees with it is a typo, not a discovery.
-
 ## Not built yet (in order)
 
-0. **More form templates** if they earn it — a modal vamp, a bossa 16. The bar
-   is the same: a shared idiom, expressible in degrees, matched on form rather
-   than named per tune.
-1. **Metronome + count-in**, unlocking an "at tempo" fifth skill.
-2. **Play-along over the entered changes** — the roadmap's shared backing
-   engine; build it in `@fretworks/design` so every trainer benefits. The grid
-   is already structured for it: one string per bar, in playing order.
-3. Jam mechanics as tracked items; transposition / horn keys; ear training
-   ("name the tune from its changes").
+Each serves one of the three jobs; none duplicates iReal Pro or forScore.
+
+1. **Show the repertoire growing** — a "learned on" date per tune and a running
+   count ("14 tunes · +3 this month"). `learnedOn().on` already computes it.
+2. **One refresher per learned tune** instead of four: "play it through" →
+   Got it, or Shaky + which skill slipped, and only that skill drops back.
+   At 40 tunes × 4 skills the queue is 160 cards; this is the fix for that, and
+   the biggest change on the list — discuss with Zak before building.
+3. **A link per tune into iReal Pro / forScore**, so a refresher is one tap
+   from the chart. Check first whether either app opens a specific song by
+   URL; if not, a copy-title button.
+4. **"N refreshers due" on the launcher** — needs a hook in `@fretworks/design`.
 
 ## Before shipping any change
 
 - `npm run verify` must pass — especially the no-copyrighted-material check.
 - `npm run build` must pass.
-- Verify at ~393px in the browser; the tune detail and Today card are the two
-  screens that matter. For the grid, check with a **simulated keyboard** (stub
-  `visualViewport.height` and fire `resize`, as
-  `scratchpad/chart.mjs` does) that the focused bar still sits above the
-  accessory bar — that is the failure the whole layout is arranged to avoid.
+- Verify at ~393px in the browser; the tune detail, the Mine list and the
+  Today card are the screens that matter.

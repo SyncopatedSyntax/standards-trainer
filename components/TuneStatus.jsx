@@ -6,7 +6,7 @@
 // in each place is how a list and a detail view start disagreeing.
 
 import { ACCENT } from '../lib/tool.js';
-import { cardId, skillState, tuneStatus, relativeDay, todayStr } from '../lib/srs.js';
+import { cardId, skillState, tuneStatus, tuneStage, relativeDay, todayStr } from '../lib/srs.js';
 
 // Solid is the accent; learning is amber (the same amber the Progress bar
 // uses); never-seen is a hollow outline, so "not started" reads as absence
@@ -58,4 +58,37 @@ export function byAttention(srs, skills, today = todayStr()) {
     if (sa.due !== sb.due) return sb.due - sa.due;
     return String(sa.next || '9999').localeCompare(String(sb.next || '9999'));
   };
+}
+
+// The three stages, in the order a list shows them: what wants you first, the
+// reference shelf last. One definition, used by the Mine list, Progress and
+// the tune page's badge, so a tune is never "learning" in one place and
+// "needs a refresher" in another.
+export const STAGES = [
+  { id: 'refresher', label: 'Needs a refresher', colour: '#ff8f8f',
+    blurb: 'Learned, but something is due or has slipped. Play it through and grade it.' },
+  { id: 'learning', label: 'Learning', colour: '#e8a838',
+    blurb: 'Taken on, not yet solid on all four skills at once.' },
+  { id: 'repertoire', label: 'In repertoire', colour: ACCENT,
+    blurb: 'Learned, and nothing due. These come back on their own.' },
+];
+export const UP_NEXT = { id: 'next', label: 'Up next', colour: '#8a88a0',
+  blurb: 'Tunes you plan to learn. Nothing is scheduled until you start one.' };
+
+// Taken-on tune ids split by stage, each group in `byAttention` order.
+export function groupByStage(ids, srs, skills, today = todayStr()) {
+  const out = { refresher: [], learning: [], repertoire: [] };
+  for (const id of [...ids].sort(byAttention(srs, skills, today))) out[tuneStage(srs, id, skills, today)].push(id);
+  return out;
+}
+
+// The stage as a small label, for the tune page's title row.
+export function StageBadge({ stage }) {
+  const s = stage === 'next' ? UP_NEXT : STAGES.find(x => x.id === stage);
+  if (!s) return null;
+  return (
+    <span style={{ fontSize: '10.5px', fontWeight: 800, color: s.colour, border: `1px solid ${s.colour}55`, background: s.colour + '14', borderRadius: '20px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
+      {s.label}
+    </span>
+  );
 }

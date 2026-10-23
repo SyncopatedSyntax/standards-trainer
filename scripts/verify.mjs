@@ -10,10 +10,8 @@
 //   node scripts/verify.mjs
 
 import { CORE_TUNES, TIERS, SKILLS, LETTER_FORMS } from '../data/tunes.js';
-import { defaultSections, countBars, emptyChart, parsePipedBars, fillBars } from '../lib/chart.js';
-import { FORM_TEMPLATES, templatesFor } from '../data/forms.js';
-import { parseKey, parseNumeral, renderBar } from '../lib/roman.js';
-import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, earlierAnswers, clearEarlier, isSkillSolid, cardId } from '../lib/srs.js';
+import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, earlierAnswers, clearEarlier, isSkillSolid, cardId, learnedOn, tuneStage, capDue, withMaxGap, DEFAULT_MAX_GAP } from '../lib/srs.js';
+import { chartText, migrateCharts } from '../lib/migrate.js';
 
 let failures = 0;
 const check = (name, fn) => {
@@ -126,167 +124,6 @@ check('the four skills are well-formed', () => {
   }
 });
 
-// ── The bar grid's layout ────────────────────────────────────────────────
-// `defaultSections` derives an empty grid from a tune's form and bar count. A
-// grid that loses or invents bars is silently wrong — you would only notice
-// weeks later, having written a chart into the wrong shape — so re-derive it
-// for every tune rather than trusting the arithmetic by eye.
-console.log('\nlib/chart.js');
-
-check('every tune lays out into exactly its own bar count', () => {
-  for (const t of CORE_TUNES) {
-    const total = countBars(emptyChart(t));
-    if (total !== t.bars) fail(`${t.id}: form ${t.form} laid out ${total} bars, but the tune is ${t.bars}`);
-  }
-});
-
-check('a letter form gets one section per letter, all equal length', () => {
-  for (const t of CORE_TUNES) {
-    if (!LETTER_FORMS.test(t.form) || t.bars % t.form.length !== 0) continue;
-    const secs = defaultSections(t);
-    if (secs.length !== t.form.length) fail(`${t.id}: ${t.form} gave ${secs.length} sections`);
-    if (secs.map(x => x.label).join('') !== t.form) fail(`${t.id}: section labels ${secs.map(x => x.label).join('')} do not spell ${t.form}`);
-    const per = t.bars / t.form.length;
-    for (const x of secs) if (x.bars.length !== per) fail(`${t.id}: section ${x.label} has ${x.bars.length} bars, expected ${per}`);
-  }
-});
-
-check('a blues is one undivided section', () => {
-  for (const t of CORE_TUNES.filter(x => x.form === 'blues')) {
-    const secs = defaultSections(t);
-    if (secs.length !== 1) fail(`${t.id}: a blues should be one section, got ${secs.length}`);
-  }
-});
-
-check('a short tail joins the last section rather than becoming a stub', () => {
-  // All The Things You Are is 8+8+8+12. A naive chunker gives 8+8+8+8+4 and
-  // misrepresents the form, so this pins the behaviour for every long tail.
-  for (const t of CORE_TUNES.filter(x => x.form === 'through')) {
-    for (const x of defaultSections(t)) {
-      if (x.bars.length < 8) fail(`${t.id}: section ${x.label} is only ${x.bars.length} bars — a stub, not a section`);
-    }
-  }
-});
-
-check('every grid starts completely empty', () => {
-  // The guard below stops chord data reaching data/tunes.js; this stops it
-  // reaching the user through the grid builder instead.
-  for (const t of CORE_TUNES) {
-    for (const s of defaultSections(t)) {
-      for (const b of s.bars) if (b !== '') fail(`${t.id}: section ${s.label} ships a pre-filled bar "${b}"`);
-    }
-  }
-});
-
-check('notes written with pipes read back as bars', () => {
-  const bars = parsePipedBars('A section\n| Cm7 | F7 | B♭Δ | E♭Δ |\n| Aø |  | G7 | Cm7 |');
-  const expect = ['Cm7', 'F7', 'B♭Δ', 'E♭Δ', 'Aø', '', 'G7', 'Cm7'];
-  if (bars.length !== expect.length) fail(`got ${bars.length} bars, expected ${expect.length}: ${JSON.stringify(bars)}`);
-  bars.forEach((b, i) => { if (b !== expect[i]) fail(`bar ${i + 1}: got "${b}", expected "${expect[i]}"`); });
-  if (parsePipedBars('just some prose, no pipes').length !== 0) fail('a line without pipes is prose and must be skipped');
-});
-
-check('an import never changes the shape of the form', () => {
-  const t = CORE_TUNES.find(x => x.id === 'blue-bossa');
-  const before = emptyChart(t);
-  const after = fillBars(before, Array.from({ length: 200 }, (_, i) => `X${i}`));
-  if (countBars(after) !== countBars(before)) fail('extra bars grew the grid — they must be dropped');
-});
-
-// ── The form templates ───────────────────────────────────────────────────
-// These are the one place harmonic content ships, so they carry the heaviest
-// checks: that they are genuinely generic (degrees only, working in all twelve
-// keys), and that they render the changes a musician would actually expect.
-console.log('\ndata/forms.js');
-
-check('templates are written only in roman numerals', () => {
-  // This is the check that keeps a template a *form* rather than somebody's
-  // chart. A sequence with an absolute chord name in it is a transcription.
-  for (const t of FORM_TEMPLATES) {
-    for (const bar of t.grid) {
-      for (const tok of bar.split(/\s+/).filter(Boolean)) {
-        if (/^[A-G][b♭#♯]?(m|maj|min|dim|aug|sus|Δ|ø|°|\d|$)/.test(tok)) {
-          fail(`${t.id}: "${tok}" is an absolute chord name, not a degree`);
-        }
-        parseNumeral(tok);   // throws if it is not a numeral at all
-      }
-    }
-  }
-});
-
-check('every template fills exactly the sections it claims', () => {
-  for (const t of FORM_TEMPLATES) {
-    const total = t.sections.reduce((a, b) => a + b, 0);
-    if (t.grid.length !== total) fail(`${t.id}: ${t.grid.length} bars for sections ${t.sections.join('+')} (${total})`);
-    if (!t.name || !t.blurb) fail(`${t.id}: missing a name or blurb`);
-    if (!['major', 'minor'].includes(t.tonality)) fail(`${t.id}: tonality "${t.tonality}"`);
-  }
-});
-
-check('a template renders in all twelve keys without throwing', () => {
-  const keys = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
-  for (const t of FORM_TEMPLATES) {
-    for (const name of keys) {
-      const k = parseKey(t.tonality === 'minor' ? name.replace(/^([A-G][b♭#♯]?)$/, '$1m') : name);
-      if (!k) fail(`${t.id}: could not parse key ${name}`);
-      for (const bar of t.grid) {
-        const out = renderBar(bar, k);
-        if (!out || /undefined|NaN/.test(out)) fail(`${t.id} in ${name}: bar rendered "${out}"`);
-      }
-    }
-  }
-});
-
-// Re-derive the two forms every player already knows by heart. If the
-// transposition engine or a template drifts, this is what catches it — the
-// same "check it against first principles" rule the theory trainers use.
-check('the jazz blues in F is the jazz blues in F', () => {
-  const k = parseKey('F');
-  const got = FORM_TEMPLATES.find(t => t.id === 'blues-jazz').grid.map(b => renderBar(b, k));
-  const want = ['F7', 'B♭7', 'F7', 'Cm7 F7', 'B♭7', 'B°7', 'F7', 'Am7 D7', 'Gm7', 'C7', 'F7 D7', 'Gm7 C7'];
-  got.forEach((g, i) => { if (g !== want[i]) fail(`bar ${i + 1}: got "${g}", expected "${want[i]}"`); });
-});
-
-check('the minor blues in C minor is the minor blues in C minor', () => {
-  const k = parseKey('Cm');
-  const got = FORM_TEMPLATES.find(t => t.id === 'blues-minor').grid.map(b => renderBar(b, k));
-  const want = ['Cm7', 'Cm7', 'Cm7', 'Cm7', 'Fm7', 'Fm7', 'Cm7', 'Cm7', 'A♭7', 'G7', 'Cm7', 'G7'];
-  got.forEach((g, i) => { if (g !== want[i]) fail(`bar ${i + 1}: got "${g}", expected "${want[i]}"`); });
-});
-
-check('rhythm changes in B♭ is rhythm changes in B♭', () => {
-  const k = parseKey('B♭');
-  const got = FORM_TEMPLATES.find(t => t.id === 'rhythm-changes').grid.map(b => renderBar(b, k));
-  const wantA = ['B♭ G7', 'Cm7 F7', 'B♭ G7', 'Cm7 F7', 'B♭7', 'E♭ E°7', 'B♭ G7', 'Cm7 F7'];
-  const wantB = ['D7', 'D7', 'G7', 'G7', 'C7', 'C7', 'F7', 'F7'];
-  const want = [...wantA, ...wantA, ...wantB, ...wantA];
-  got.forEach((g, i) => { if (g !== want[i]) fail(`bar ${i + 1}: got "${g}", expected "${want[i]}"`); });
-});
-
-check('templates are offered on form and key, never per tune', () => {
-  const offers = new Map();
-  for (const t of CORE_TUNES) {
-    const key = parseKey(t.key);
-    const secs = defaultSections(t).map(s => s.bars.length);
-    offers.set(t.id, templatesFor(t, key, secs).map(x => x.id));
-  }
-  // A modal tune has no tonic, so nothing can be transposed for it.
-  if (offers.get('maiden-voyage').length !== 0) fail('maiden-voyage is modal and must be offered nothing');
-  // A minor blues must not be offered the major templates, or the other way.
-  if (offers.get('mr-pc').join() !== 'blues-minor') fail(`mr-pc got ${offers.get('mr-pc')}`);
-  if (offers.get('c-jam-blues').includes('blues-minor')) fail('a major blues was offered the minor template');
-  if (offers.get('c-jam-blues').length !== 3) fail(`c-jam-blues got ${offers.get('c-jam-blues')}`);
-  // So What is an AABA 32 in a minor key: rhythm changes is major, so no.
-  if (offers.get('so-what').length !== 0) fail(`so-what got ${offers.get('so-what')}`);
-  if (!offers.get('oleo').includes('rhythm-changes')) fail('oleo is the rhythm-changes tune and was offered none');
-  // Through-composed tunes have no letter form to match.
-  if (offers.get('giant-steps').length !== 0) fail('giant-steps is through-composed');
-});
-
-// ── Grading ──────────────────────────────────────────────────────────────
-// Zak found that tapping Got it several times kept pushing the next review
-// further out: every tap was a fresh SM-2 success. One answer per card per
-// day now; these pin that, and that the engine itself is unchanged.
 console.log('\nlib/srs.js — grading');
 
 check('tapping Got it again the same day counts once', () => {
@@ -476,6 +313,88 @@ check('the history lists come out newest first and stay within a tune', () => {
   const r = recentAnswers(srs, ['a', 'b'], skills, 3).map(e => `${e.tuneId} ${e.d}`);
   if (r.join(',') !== 'a 2026-03-04,a 2026-03-04,b 2026-03-03') fail(`recent: ${r.join(', ')}`);
   if (recentAnswers(srs, ['b'], skills).length !== 1) fail('recentAnswers must only read the tunes it is given');
+});
+
+console.log('\nlib/srs.js — stages and the refresher ceiling');
+
+check('a tune is learned from the first day all four skills were solid together', () => {
+  const skills = [{ id: 'head' }, { id: 'changes' }, { id: 'form' }, { id: 'solo' }];
+  const D = n => addDays(T0, n);
+  const srs = {};
+  const answer = (skill, ok, d) => { srs[cardId('t', skill)] = gradeCard(srs[cardId('t', skill)], ok, d); };
+  // Two Got its on each skill, but solo's second one comes last, on day 9.
+  for (const sk of ['head', 'changes', 'form']) { answer(sk, true, D(0)); answer(sk, true, D(5)); }
+  answer('solo', true, D(0));
+  if (learnedOn(srs, 't', skills).learned) fail('three solid skills are not a learned tune');
+  if (tuneStage(srs, 't', skills, D(1)) !== 'learning') fail('should be learning');
+  answer('solo', true, D(9));
+  const l = learnedOn(srs, 't', skills);
+  if (!l.learned || l.on !== D(9)) fail(`learned ${l.learned} on ${l.on}, expected ${D(9)}`);
+  // A slip afterwards needs a refresher; it does not unlearn the tune.
+  answer('changes', false, D(12));
+  if (tuneStage(srs, 't', skills, D(12)) !== 'refresher') fail('a learned tune with a shaky skill should need a refresher');
+  if (learnedOn(srs, 't', skills).on !== D(9)) fail('a slip must not move the day it was learned');
+  // Solid again and nothing due: back in the repertoire.
+  answer('changes', true, D(13)); answer('changes', true, D(14));
+  const later = D(15);
+  for (const sk of ['head', 'form', 'solo']) answer(sk, true, later);
+  answer('changes', true, later);
+  if (tuneStage(srs, 't', skills, later) !== 'repertoire') fail(`expected repertoire, got ${tuneStage(srs, 't', skills, later)}`);
+  // Deleting the answer that completed it un-learns it — the stage follows the history.
+  srs[cardId('t', 'solo')] = deleteAnswer(srs[cardId('t', 'solo')], D(9));
+  const after = learnedOn(srs, 't', skills);
+  if (after.on === D(9)) fail('deleting the answer that completed the tune should move its learned day');
+  // A tune solid before the history was kept is learned, with no day on record.
+  const legacy = { ef: 2.5, interval: 15, reps: 3, nextDue: D(30) };
+  const old = Object.fromEntries(skills.map(s => [cardId('o', s.id), legacy]));
+  const lo = learnedOn(old, 'o', skills);
+  if (!lo.learned || lo.on !== null) fail('a tune learned before the history should be learned, day unknown');
+  if (tuneStage({}, 'none', skills, D(0)) !== 'learning') fail('a tune with no answers is learning');
+});
+
+check('the ceiling caps the gap after the last answer, and never touches the history', () => {
+  for (let i = 0; i < 300; i++) {
+    const { card } = run();
+    for (const cap of [30, 60, 90, 180]) {
+      const c = capDue(card, cap);
+      const last = addDays(card.nextDue, -card.interval);
+      if (c.nextDue > addDays(last, cap)) fail(`run ${i}: capped due ${c.nextDue} is more than ${cap} days after ${last}`);
+      if (c.nextDue > card.nextDue) fail(`run ${i}: the cap must never push a review later`);
+      if (card.interval <= cap && c !== card) fail(`run ${i}: an interval under the cap must be left alone`);
+      for (const k of ['ef', 'interval', 'reps', 'seen', 'hist', 'base']) if (c[k] !== card[k]) fail(`run ${i}: the cap changed ${k}`);
+    }
+  }
+  // Seven straight Got its: SM-2 alone waits 595 days; two months caps it at 60.
+  let c; for (let i = 0; i < 7; i++) c = gradeCard(c, true, addDays(T0, i * 700));
+  const last = addDays(T0, 6 * 700);
+  if (c.nextDue !== addDays(last, c.interval)) fail('setup');
+  if (capDue(c, DEFAULT_MAX_GAP).nextDue !== addDays(last, 60)) fail(`expected ${addDays(last, 60)}, got ${capDue(c, 60).nextDue}`);
+  const srs = { a: c, b: null };
+  if (withMaxGap(srs, 0) !== srs) fail('no limit must be the raw schedule, untouched');
+  if (withMaxGap(srs, 60).b !== null) fail('an empty slot must pass through');
+});
+
+console.log('\nlib/migrate.js — the retired chart grid');
+
+check('anything typed into the old grid moves into the notes, once', () => {
+  const mem = new Map();
+  globalThis.localStorage = { getItem: k => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: k => mem.delete(k) };
+  const chart = { sections: [{ label: 'A', bars: ['Cm7', 'F7', 'B♭Δ', 'E♭Δ', 'Aø', 'D7', 'Gm', ''] }, { label: 'B', bars: ['', '', '', '', '', '', '', ''] }] };
+  mem.set('js_charts', JSON.stringify({ 'autumn-leaves': chart, 'blue-monk': { sections: [{ label: 'A', bars: ['', ''] }] } }));
+  const notes = migrateCharts({ 'autumn-leaves': 'Chet Baker recording', 'doxy': 'keep me' });
+  const t = notes['autumn-leaves'];
+  if (!t.startsWith('Chet Baker recording\n\n')) fail('the existing note must be kept, first');
+  if (!t.includes('A: | Cm7 | F7 | B♭Δ | E♭Δ |') || !t.includes('| Aø | D7 | Gm | - |')) fail(`bars not written out:\n${t}`);
+  if (notes['blue-monk'] !== undefined) fail('an empty grid must not create a note');
+  if (notes.doxy !== 'keep me') fail('other notes must be untouched');
+  if (mem.has('js_charts')) fail('the grid key should be removed once moved');
+  if (JSON.parse(mem.get('js_notes'))['autumn-leaves'] !== t) fail('the notes must be saved');
+  if (migrateCharts(notes) !== notes) fail('a second run must change nothing');
+  // A note that already holds the text (another device moved it first) is not doubled.
+  mem.set('js_charts', JSON.stringify({ 'autumn-leaves': chart }));
+  if (migrateCharts(notes)['autumn-leaves'] !== t) fail('the text must not be added twice');
+  if (!chartText({ sections: [{ label: 'A', bars: ['C'] }], from: 'blues-jazz' }).includes('generic form template')) fail('a template-started chart should say so');
+  delete globalThis.localStorage;
 });
 
 console.log('\ndata/tunes.js — the guard');

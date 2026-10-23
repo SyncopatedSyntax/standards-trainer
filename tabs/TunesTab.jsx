@@ -5,45 +5,49 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import TuneDetail from '../components/TuneDetail.jsx';
 import { btn, panel, labelCss, Field } from '../components/ui.jsx';
 import { ACCENT } from '../lib/tool.js';
-import TuneStatus, { byAttention } from '../components/TuneStatus.jsx';
+import TuneStatus, { groupByStage, STAGES, UP_NEXT } from '../components/TuneStatus.jsx';
 import { TIERS, CORE_TUNES } from '../data/tunes.js';
 import { tuneIsReady, todayStr } from '../lib/srs.js';
-import { chartFor, countBars, countFilled } from '../lib/chart.js';
 
 const slug = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 
-export default function TunesTab({ tunes, byId, active, srs, notes, charts, skills, onActivate, onDeactivate, onSetNote, onSetChart, onAddTune, onRemoveCustom, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, scrollRef, openId, onOpened }) {
+export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skills, onActivate, onDeactivate, onSetNote, onToggleNext, onAddTune, onRemoveCustom, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, scrollRef, openId, onOpened }) {
   const [sel, setSel] = useState(null);
   // Open on your own repertoire once you have one. The core path is the right
   // first screen exactly once — after that, "what am I working on" is the
   // question this tab is opened to answer.
-  const [filter, setFilter] = useState(() => (active.length ? 'mine' : 'core'));
+  const [filter, setFilter] = useState(() => (active.length || upNext.length ? 'mine' : 'core'));
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ title: '', composer: '', key: '', form: 'AABA', bars: 32, feel: '' });
   const savedScrollY = useRef(0);
 
   const list = useMemo(() => {
-    let r = filter === 'mine' ? tunes.filter(t => active.includes(t.id))
+    let r = filter === 'mine' ? tunes.filter(t => active.includes(t.id) || upNext.includes(t.id))
       : filter === 'core' ? tunes.filter(t => !t.custom)
         : tunes;
     const q = search.trim().toLowerCase();
     if (q) r = r.filter(t => t.title.toLowerCase().includes(q) || (t.composer || '').toLowerCase().includes(q));
     return r;
-  }, [tunes, active, filter, search]);
+  }, [tunes, active, upNext, filter, search]);
 
   const today = todayStr();
 
   // Group by tier so the curriculum's shape is visible, not just a flat list —
-  // except in Mine, where a handful of tunes spread across five tier headings
-  // is all chrome and no information. There they go in one list, ordered by
-  // what is asking for attention.
+  // except in Mine, which groups by STAGE instead: needs a refresher, learning,
+  // up next, in repertoire. Tiers there would be chrome; what you want from
+  // your own list is what to play and what you already know. Within a stage,
+  // the `byAttention` order Progress uses too.
   const grouped = useMemo(() => {
     if (filter === 'mine') {
-      const ids = list.map(t => t.id).sort(byAttention(srs, skills, today));
-      const order = new Map(ids.map((id, i) => [id, i]));
-      return [{ tier: { n: -1, label: 'Working on', blurb: 'Ordered by what wants reviewing. Tap one to grade it, edit the changes, or drop it.' },
-                tunes: [...list].sort((a, b) => order.get(a.id) - order.get(b.id)) }];
+      const st = groupByStage(list.filter(t => active.includes(t.id)).map(t => t.id), srs, skills, today);
+      const nextIds = upNext.filter(id => !active.includes(id) && list.some(t => t.id === id));
+      const head = s => ({ n: s.id, label: s.label, blurb: s.blurb, colour: s.colour });
+      return [
+        ...STAGES.filter(s => s.id !== 'repertoire').map(s => ({ tier: head(s), tunes: st[s.id].map(id => byId.get(id)) })),
+        { tier: head(UP_NEXT), tunes: nextIds.map(id => byId.get(id)) },
+        { tier: head(STAGES.find(s => s.id === 'repertoire')), tunes: st.repertoire.map(id => byId.get(id)) },
+      ].filter(g => g.tunes.length);
     }
     const out = [];
     for (const tier of TIERS) {
@@ -53,7 +57,11 @@ export default function TunesTab({ tunes, byId, active, srs, notes, charts, skil
     const custom = list.filter(t => t.custom);
     if (custom.length) out.push({ tier: { n: 0, label: 'Your own tunes', blurb: 'Added by you — they schedule exactly like the rest.' }, tunes: custom });
     return out;
-  }, [list, filter, srs, skills, today]);
+  }, [list, filter, srs, skills, today, active, upNext, byId]);
+  const counts = useMemo(() => {
+    const st = groupByStage(active, srs, skills, today);
+    return { learned: st.refresher.length + st.repertoire.length, learning: st.learning.length, next: upNext.filter(id => !active.includes(id)).length };
+  }, [active, upNext, srs, skills, today]);
 
   // Opened from another tab. This sits above the early return below, with
   // every other hook — a hook after it would not run on the renders where a
@@ -74,9 +82,9 @@ export default function TunesTab({ tunes, byId, active, srs, notes, charts, skil
 
   const tune = sel ? byId.get(sel) : null;
   if (tune) {
-    return <TuneDetail tune={tune} active={active} srs={srs} notes={notes} charts={charts} skills={skills}
+    return <TuneDetail tune={tune} active={active} upNext={upNext} srs={srs} notes={notes} skills={skills}
       onBack={back} onActivate={onActivate} onDeactivate={onDeactivate}
-      onSetNote={onSetNote} onSetChart={onSetChart} onGrade={onGrade} onUngrade={onUngrade} onEditAnswer={onEditAnswer} onDeleteAnswer={onDeleteAnswer} onClearEarlier={onClearEarlier} onRemoveCustom={onRemoveCustom} />;
+      onSetNote={onSetNote} onToggleNext={onToggleNext} onGrade={onGrade} onUngrade={onUngrade} onEditAnswer={onEditAnswer} onDeleteAnswer={onDeleteAnswer} onClearEarlier={onClearEarlier} onRemoveCustom={onRemoveCustom} />;
   }
 
   const saveNew = () => {
@@ -109,19 +117,21 @@ export default function TunesTab({ tunes, byId, active, srs, notes, charts, skil
     <div style={{ padding: '14px', maxWidth: '640px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
         <div style={{ fontSize: '16px', fontWeight: 900, color: '#fff' }}>Tunes</div>
-        <div style={{ color: '#999', fontSize: '11px' }}>{active.length} in your repertoire</div>
+        <div style={{ color: '#999', fontSize: '11px' }}>
+          {counts.learned} learned · {counts.learning} learning{counts.next ? ` · ${counts.next} up next` : ''}
+        </div>
       </div>
 
       <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by title or composer…"
         style={{ width: '100%', background: '#13121f', border: '1px solid #2a2840', borderRadius: '9px', padding: '9px 12px', color: '#fff', fontSize: '13px', marginBottom: '10px', outline: 'none' }} />
 
       <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '12px' }}>
-        {pill('mine', '★ Mine', active.length)}
+        {pill('mine', '★ Mine', active.length + counts.next)}
         {pill('core', 'Core path', CORE_TUNES.length)}
         {pill('all', 'All', tunes.length)}
       </div>
 
-      {filter === 'mine' && active.length === 0 && (
+      {filter === 'mine' && active.length === 0 && counts.next === 0 && (
         <div style={{ ...panel, textAlign: 'center', marginBottom: '12px' }}>
           <div style={{ fontSize: '30px', marginBottom: '6px' }}>🎺</div>
           <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>No tunes yet</div>
@@ -134,15 +144,15 @@ export default function TunesTab({ tunes, byId, active, srs, notes, charts, skil
 
       {grouped.map(({ tier, tunes: group }) => (
         <div key={tier.n} style={{ marginBottom: '16px' }}>
-          <div style={{ ...labelCss, marginBottom: '2px' }}>{tier.n > 0 ? `Tier ${tier.n} · ` : ''}{tier.label}</div>
+          <div style={{ ...labelCss, marginBottom: '2px', color: tier.colour || labelCss.color }}>
+            {typeof tier.n === 'number' && tier.n > 0 ? `Tier ${tier.n} · ` : ''}{tier.label}{tier.colour ? ` (${group.length})` : ''}
+          </div>
           <div style={{ fontSize: '11px', color: '#777', marginBottom: '8px', lineHeight: 1.5 }}>{tier.blurb}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {group.map(t => {
               const isActive = active.includes(t.id);
               const ready = isActive && tuneIsReady(srs, t.id, skills);
-              const chart = isActive ? chartFor(charts, t) : null;
-              const written = chart ? countFilled(chart) : 0;
-              const barsTotal = chart ? countBars(chart) : 0;
+              const planned = !isActive && upNext.includes(t.id);
               return (
                 <div key={t.id} onClick={() => handleSel(t.id)}
                   style={{ background: '#13121f', border: `1px solid ${ready ? ACCENT + '66' : isActive ? '#3a3852' : '#2a2840'}`, borderRadius: '10px', padding: '10px', cursor: 'pointer', touchAction: 'manipulation' }}>
@@ -157,15 +167,8 @@ export default function TunesTab({ tunes, byId, active, srs, notes, charts, skil
                     </div>
                     {isActive
                       ? <TuneStatus srs={srs} tuneId={t.id} skills={skills} today={today} />
-                      : <span style={{ fontSize: '10px', color: '#666' }}>not started</span>}
+                      : <span style={{ fontSize: '10px', color: planned ? UP_NEXT.colour : '#666', fontWeight: planned ? 700 : 400 }}>{planned ? 'up next' : 'not started'}</span>}
                   </div>
-                  {isActive && (
-                    <div style={{ fontSize: '10px', color: written === barsTotal ? '#6b6980' : '#8a88a0', marginTop: '6px' }}>
-                      {written === 0 ? '○ changes not written out yet'
-                        : written < barsTotal ? `◐ changes ${written}/${barsTotal} bars`
-                          : '● changes written out'}
-                    </div>
-                  )}
                   {!isActive && t.why && <div style={{ fontSize: '11px', color: '#8a88a0', marginTop: '5px', lineHeight: 1.5 }}>{t.why}</div>}
                 </div>
               );

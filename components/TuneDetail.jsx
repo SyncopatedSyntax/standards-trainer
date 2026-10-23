@@ -1,17 +1,20 @@
 // One tune: the facts it ships with, the four skills and where they stand,
-// and the notes field where the changes live until the bar grid arrives.
+// its answer history, and your notes. The chart itself lives in iReal Pro or
+// forScore — this app tracks what you know, not the music.
 
 import { useState } from 'react';
 import { btn, panel, labelCss, TextArea } from './ui.jsx';
-import ChartEditor from './ChartEditor.jsx';
 import AnswerHistory from './AnswerHistory.jsx';
+import { StageBadge, UP_NEXT } from './TuneStatus.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { cardId, isSkillSolid, todayStr, tuneIsReady, relativeDay, gradedToday } from '../lib/srs.js';
+import { cardId, isSkillSolid, todayStr, tuneStage, relativeDay, gradedToday } from '../lib/srs.js';
 
-export default function TuneDetail({ tune, active, srs, notes, charts, skills, onBack, onActivate, onDeactivate, onSetNote, onSetChart, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, onRemoveCustom }) {
+export default function TuneDetail({ tune, active, upNext, srs, notes, skills, onBack, onActivate, onDeactivate, onSetNote, onToggleNext, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, onRemoveCustom }) {
   const today = todayStr();
   const isActive = active.includes(tune.id);
-  const ready = isActive && tuneIsReady(srs, tune.id, skills);
+  const planned = !isActive && upNext.includes(tune.id);
+  const stage = isActive ? tuneStage(srs, tune.id, skills, today) : planned ? 'next' : null;
+  const ready = stage === 'repertoire';
   const [confirmDrop, setConfirmDrop] = useState(false);
 
   const fact = (k, v) => (
@@ -28,7 +31,7 @@ export default function TuneDetail({ tune, active, srs, notes, charts, skills, o
       <div style={{ ...panel, marginBottom: '12px', borderColor: ready ? ACCENT + '66' : '#2a2840' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
           <div style={{ fontSize: '18px', fontWeight: 900, color: '#fff', fontFamily: 'var(--font-heading)' }}>{tune.title}</div>
-          {ready && <span style={{ fontSize: '11px', color: ACCENT, fontWeight: 700 }}>✓ jam ready</span>}
+          <StageBadge stage={stage} />
         </div>
         <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{tune.composer}</div>
         <div style={{ marginTop: '10px', borderTop: '1px solid #1a1928', paddingTop: '8px' }}>
@@ -71,6 +74,12 @@ export default function TuneDetail({ tune, active, srs, notes, charts, skills, o
             Taking this on creates its four review cards. Nothing is scheduled until you do.
           </div>
           <button onClick={() => onActivate(tune.id)} style={{ ...btn(true), width: '100%', padding: '12px' }}>Start learning this</button>
+          {/* Planning, not practice: a list of what to learn next, so growing
+              the repertoire has a direction. Starting the tune takes it off. */}
+          <button onClick={() => onToggleNext(tune.id)}
+            style={{ ...btn(planned, UP_NEXT.colour), width: '100%', marginTop: '8px', minHeight: '40px', color: planned ? '#ddd' : '#999' }}>
+            {planned ? '✓ On your Up next list — remove' : '+ Add to Up next'}
+          </button>
         </div>
       ) : (
         <div style={{ ...panel, marginBottom: '12px' }}>
@@ -116,12 +125,10 @@ export default function TuneDetail({ tune, active, srs, notes, charts, skills, o
 
       {isActive && <AnswerHistory tune={tune} srs={srs} skills={skills} today={today} onEdit={onEditAnswer} onDelete={onDeleteAnswer} onClearEarlier={onClearEarlier} />}
 
-      <ChartEditor tune={tune} charts={charts} onSetChart={onSetChart} note={notes[tune.id] || ''} />
-
       <div style={{ ...panel, marginBottom: '12px' }}>
         <TextArea label="Notes" value={notes[tune.id] || ''} onChange={v => onSetNote(tune.id, v)}
           rows={5}
-          placeholder={'Anything the grid above does not hold — which recording, a fingering, the intro, what went wrong last time.'} />
+          placeholder={'Which recording, which iReal Pro or forScore chart, a fingering, the intro, what went wrong last time.'} />
       </div>
 
       {isActive && (

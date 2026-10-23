@@ -37,7 +37,7 @@ export default function GuideTab() {
     <div style={{ padding: '14px', maxWidth: '600px', margin: '0 auto' }}>
       <div style={{ fontSize: '16px', fontWeight: 900, color: '#fff', marginBottom: '4px' }}>Guide</div>
       <p style={{ fontSize: '12px', color: '#999', lineHeight: 1.6, margin: '0 0 14px' }}>
-        What the four skills mean, how the reviews work, and the things at a jam that nobody explains.
+        What the four skills mean, how a tune moves from learning to learned, how the reviews work, and the things at a jam that nobody explains.
       </p>
 
       <Section title="The four skills" open={open === 'skills'} onToggle={t('skills')}>
@@ -47,8 +47,8 @@ export default function GuideTab() {
         </p>
         {SKILLS.map(s => <Item key={s.id} term={s.label}>{s.blurb}</Item>)}
         <p style={{ margin: '10px 0 0', color: '#888' }}>
-          A tune counts as <b style={{ color: ACCENT }}>jam ready</b> when all four have been
-          got right at least twice.
+          A tune counts as <b style={{ color: ACCENT }}>learned</b> once all four have been got
+          right at least twice, at the same time.
         </p>
       </Section>
 
@@ -56,6 +56,11 @@ export default function GuideTab() {
         <p style={{ margin: '0 0 10px' }}>
           Spaced repetition. Get a card right and it comes back later each time — a day, then
           six, then further out. Mark it shaky and it returns tomorrow.
+        </p>
+        <p style={{ margin: '0 0 10px' }}>
+          Left alone, the gaps would keep growing — past a year for a tune you know well. Not
+          forgetting means hearing from every tune now and then, so the gap stops at a ceiling:
+          two months unless you change it in <b style={{ color: '#fff' }}>Settings</b>.
         </p>
         <p style={{ margin: '0 0 10px' }}>
           Nothing is scheduled until you take a tune on, so browsing the core path costs you
@@ -73,32 +78,22 @@ export default function GuideTab() {
         </p>
       </Section>
 
-      <Section title="Why you type the changes in" open={open === 'why'} onToggle={t('why')}>
+      <Section title="Learning, learned, needs a refresher" open={open === 'stages'} onToggle={t('stages')}>
         <p style={{ margin: '0 0 10px' }}>
-          The app ships each tune's facts — key, form, bar count, feel, tempo — because those are
-          facts. The melodies and the changes are under copyright, so they are not shipped and
-          never will be.
+          This app sits beside iReal Pro, forScore and your Real Book rather than replacing them:
+          they hold the music, this keeps track of what you know. Every tune you take on is in one
+          of three places, and the Tunes tab&rsquo;s <b style={{ color: '#fff' }}>Mine</b> list is
+          grouped by them.
         </p>
-        <p style={{ margin: '0 0 10px' }}>
-          Write them out yourself from your Real Book or by ear. It is not a workaround: copying
-          out a form bar by bar is one of the more effective ways to learn it.
-        </p>
-        <p style={{ margin: '0 0 10px' }}>
-          The exception is the <strong>form templates</strong>. The twelve-bar blues and rhythm
-          changes are shared idioms rather than anyone's composition — that is why contrafacts
-          exist, and why Oleo can be built on I Got Rhythm. Those ship, written as degrees so they
-          work in any key, and an empty grid offers whichever ones fit the tune's form. Treat one
-          as a starting point, never as the answer: C Jam Blues, Blue Monk and Billie's Bounce are
-          all “a 12-bar blues” and all three differ, which is exactly why they are separate tunes
-          here. The app keeps saying so until you tell it you have checked.
-        </p>
+        <Item term="Learning">taken on, but not yet solid on all four skills at once. Its cards
+          come up in Today like any other — practise it in whichever app you use, then grade it.</Item>
+        <Item term="In repertoire">all four skills have been solid together, and nothing is due.
+          It comes back on its own.</Item>
+        <Item term="Needs a refresher">learned, but a skill is due or has slipped. A slip does not
+          send a tune back to Learning — you learned it once, and it is a refresher you need.</Item>
         <p style={{ margin: 0 }}>
-          Open a tune and tap a bar in the grid. The grid comes pre-shaped from the tune's form —
-          an AABA 32 gives you four eight-bar sections — so the shape is right before you start.
-          Two chords in one bar is just two words in the cell. The keypad above the keyboard has
-          the symbols a phone cannot type: {'Δ'} {'ø'} {'°'} {'♭'} {'♯'}. Where a section repeats,
-          its heading offers to copy the one above, which you can then edit — the last bars of a
-          second A are usually where it differs.
+          <b style={{ color: '#fff' }}>Up next</b> is a plain list of what you plan to learn, so the
+          repertoire grows in a direction. Add a tune from its page; starting it takes it off.
         </p>
       </Section>
 

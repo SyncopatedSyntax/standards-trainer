@@ -3,21 +3,20 @@
 
 import { useMemo } from 'react';
 import { panel, labelCss, EmptyState } from '../components/ui.jsx';
-import TuneStatus, { byAttention } from '../components/TuneStatus.jsx';
+import TuneStatus, { groupByStage, STAGES } from '../components/TuneStatus.jsx';
 import { ACCENT } from '../lib/tool.js';
 import { stats, forecast, tuneIsReady, todayStr, recentAnswers, dayLabel } from '../lib/srs.js';
-import { chartFor, countBars, countFilled } from '../lib/chart.js';
 
-export default function ProgressTab({ tunes, byId, active, srs, charts, skills, onGoTunes, onGoTune }) {
+export default function ProgressTab({ tunes, byId, active, upNext, srs, skills, onGoTunes, onGoTune }) {
   const today = todayStr();
   const s = useMemo(() => stats(srs, active, skills), [srs, active, skills]);
   const days = useMemo(() => forecast(srs, active, skills, 7, today), [srs, active, skills, today]);
   const readyTunes = useMemo(() => active.filter(id => tuneIsReady(srs, id, skills)).map(id => byId.get(id)).filter(Boolean), [active, srs, skills, byId]);
-  // Same ordering the Tunes tab's Mine list uses — one repertoire should not
-  // appear in two different orders depending on which tab you reached it from.
-  const working = useMemo(
-    () => [...active].sort(byAttention(srs, skills, today)).map(id => byId.get(id)).filter(Boolean),
-    [active, srs, skills, byId, today]);
+  // Same grouping and order the Tunes tab's Mine list uses — one repertoire
+  // should not appear in two different shapes depending on which tab you
+  // reached it from.
+  const stages = useMemo(() => groupByStage(active, srs, skills, today), [active, srs, skills, today]);
+  const planned = upNext.filter(id => !active.includes(id)).length;
   const recent = useMemo(() => recentAnswers(srs, active, skills, 8), [srs, active, skills]);
   const skillLabel = useMemo(() => Object.fromEntries(skills.map(k => [k.id, k.label])), [skills]);
 
@@ -50,36 +49,49 @@ export default function ProgressTab({ tunes, byId, active, srs, charts, skills, 
         )}
       </div>
 
-      {/* Every tune you have taken on. The headline above answers "am I ready";
-          this answers "what am I actually working on, and what does it want". */}
+      {/* Every tune you have taken on, by stage. The headline above answers
+          "am I ready"; this answers what is being learned, what is done, and
+          what wants a refresher — the three things the app is for. */}
       <div style={{ ...panel, marginBottom: '12px' }}>
-        <div style={labelCss}>Working on</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {working.map(t => {
-            const chart = chartFor(charts, t);
-            const written = countFilled(chart), barsTotal = countBars(chart);
-            return (
-              <div key={t.id} onClick={() => onGoTune?.(t.id)}
-                style={{ background: '#0f0e17', border: '1px solid #242235', borderRadius: '9px', padding: '9px', cursor: onGoTune ? 'pointer' : 'default', touchAction: 'manipulation' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
-                    <div style={{ fontSize: '10px', color: '#777', marginTop: '1px' }}>
-                      {t.key === 'modal' ? 'modal' : t.key} · {written}/{barsTotal} bars written
-                    </div>
-                  </div>
-                  <TuneStatus srs={srs} tuneId={t.id} skills={skills} today={today} />
-                </div>
-              </div>
-            );
-          })}
+        <div style={labelCss}>Your repertoire</div>
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+          {STAGES.map(st => (
+            <div key={st.id} style={{ flex: 1, background: '#0f0e17', border: `1px solid ${st.colour}33`, borderRadius: '9px', padding: '8px 6px', textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: st.colour, fontFamily: 'var(--font-heading)', lineHeight: 1.1 }}>{stages[st.id].length}</div>
+              <div style={{ fontSize: '10px', color: '#999', marginTop: '2px', lineHeight: 1.3 }}>{st.label}</div>
+            </div>
+          ))}
         </div>
-        <div style={{ display: 'flex', gap: '11px', marginTop: '9px', fontSize: '10px', flexWrap: 'wrap' }}>
+        {STAGES.filter(st => stages[st.id].length).map(st => (
+          <div key={st.id} style={{ marginBottom: '8px' }}>
+            <div style={{ fontSize: '10.5px', color: st.colour, fontWeight: 700, padding: '4px 0' }}>{st.label}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {stages[st.id].map(id => byId.get(id)).filter(Boolean).map(t => (
+                <div key={t.id} onClick={() => onGoTune?.(t.id)}
+                  style={{ background: '#0f0e17', border: '1px solid #242235', borderRadius: '9px', padding: '9px', cursor: onGoTune ? 'pointer' : 'default', touchAction: 'manipulation' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
+                      <div style={{ fontSize: '10px', color: '#777', marginTop: '1px' }}>{t.key === 'modal' ? 'modal' : t.key} · {t.bars} bars · {t.feel}</div>
+                    </div>
+                    <TuneStatus srs={srs} tuneId={t.id} skills={skills} today={today} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: '11px', marginTop: '4px', fontSize: '10px', flexWrap: 'wrap' }}>
           <span style={{ color: ACCENT }}>● solid</span>
           <span style={{ color: '#e8a838' }}>● learning</span>
           <span style={{ color: '#8a88a0' }}>○ not started</span>
           <span style={{ color: '#666', marginLeft: 'auto' }}>head · changes · form · solo</span>
         </div>
+        {planned > 0 && (
+          <div onClick={onGoTunes} style={{ fontSize: '11px', color: '#8a88a0', marginTop: '9px', cursor: 'pointer' }}>
+            + {planned} tune{planned === 1 ? '' : 's'} up next — see the Tunes tab
+          </div>
+        )}
       </div>
 
       {/* Skill breakdown */}

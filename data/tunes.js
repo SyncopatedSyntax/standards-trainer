@@ -12,9 +12,8 @@
 //
 // The melodies and the changes are NOT here and must never be added. A Real
 // Book chart is under copyright; shipping one would make this repo a piracy
-// problem rather than a practice tool. The user types the changes into his own
-// browser, where they stay (`js_notes` in slice 1, `js_charts` later) — and
-// typing them in is a genuine part of learning a tune, not a workaround.
+// problem rather than a practice tool. The charts live in the apps the user
+// already practises with (iReal Pro, forScore); this one tracks what he knows.
 //
 // `tier` is the teaching order, not fame: what does this tune ask of you that
 // the previous tier did not. `why` is the one-line answer to "why this tune".

@@ -1,10 +1,7 @@
 import { ACCENT } from '../lib/tool.js';
 
 // Small shared UI primitives, the same set Focused Chord Trainer uses so the
-// two apps look like siblings. Its `SymbolField` is deliberately NOT ported:
-// the chord-symbol keypad here has to float above the on-screen keyboard
-// rather than sit under a field, so it lives in ChartEditor with the layout
-// constraint that shapes it.
+// two apps look like siblings.
 
 // Toggle/pill button style. `on` highlights it in `color`.
 export const btn = (on, color = ACCENT) => ({
@@ -43,8 +40,7 @@ export function EmptyState({ icon, title, body, action, onAction }) {
   );
 }
 
-// Multi-line field. In slice 1 this is where the changes go; afterwards it
-// stays as general notes. Rows are generous because a 32-bar form written out
+// Multi-line field, for a tune's notes. Rows are generous because a 32-bar form written out
 // four bars to a line needs the room, and it grows rather than scrolling
 // internally — a nested scroll area on a phone is a trap.
 export function TextArea({ label, value, onChange, placeholder, rows = 8 }) {
