@@ -235,10 +235,11 @@ answer and make the setting irreversible.
   **end** of Core/All, or when a search finds nothing anywhere — then as
   "Add “<what you typed>” as your own tune", title pre-filled. It is
   deliberately absent from Mine, where it used to sit at the foot: the most
-  prominent way to add a tune, and out of reach once the list grew. **Every hook must run
-  before the early return that swaps in `TuneDetail`** — a `useMemo` below it
-  renders fewer hooks on the renders where a tune is open, which is how this
-  shipped broken the first time.
+  prominent way to add a tune, and out of reach once the list grew.
+
+  **Every hook must run before the early return that swaps in
+  `TuneDetail`** — a `useMemo` below it renders fewer hooks on the renders
+  where a tune is open, which is how this shipped broken the first time.
 - **Progress** 📊 — tunes you could call tonight, then **Your repertoire**:
   the three stage counts, then every active tune under its stage, grouped and
   ordered exactly as Mine is. One repertoire must not appear in two shapes
