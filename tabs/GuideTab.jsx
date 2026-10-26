@@ -50,6 +50,11 @@ export default function GuideTab() {
           A tune counts as <b style={{ color: ACCENT }}>learned</b> once all four have been got
           right at least twice, at the same time.
         </p>
+        <p style={{ margin: '10px 0 0', color: '#888' }}>
+          Not every tune needs all four. On a tune&rsquo;s page you can switch a skill off — the head
+          of a vocal tune you only ever comp on, say. It stops coming up in Today and stops counting
+          toward learned; its answers are kept, so switching it back on picks up where it was.
+        </p>
       </Section>
 
       <Section title="How the reviews work" open={open === 'srs'} onToggle={t('srs')}>
@@ -85,9 +90,9 @@ export default function GuideTab() {
           of three places, and the Tunes tab&rsquo;s <b style={{ color: '#fff' }}>Mine</b> list is
           grouped by them.
         </p>
-        <Item term="Learning">taken on, but not yet solid on all four skills at once. Its cards
+        <Item term="Learning">taken on, but not yet solid on all its skills at once. Its cards
           come up in Today like any other — practise it in whichever app you use, then grade it.</Item>
-        <Item term="In repertoire">all four skills have been solid together, and nothing is due.
+        <Item term="In repertoire">all its skills have been solid together, and nothing is due.
           It comes back on its own.</Item>
         <Item term="Needs a refresher">learned, but a skill is due or has slipped. A slip does not
           send a tune back to Learning — you learned it once, and it is a refresher you need.</Item>

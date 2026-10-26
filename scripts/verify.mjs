@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { CORE_TUNES, TIERS, SKILLS, LETTER_FORMS } from '../data/tunes.js';
-import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, earlierAnswers, clearEarlier, isSkillSolid, cardId, learnedOn, tuneStage, capDue, withMaxGap, DEFAULT_MAX_GAP, learnedTimeline, learnedThisMonth } from '../lib/srs.js';
+import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, earlierAnswers, clearEarlier, isSkillSolid, cardId, learnedOn, tuneStage, capDue, withMaxGap, DEFAULT_MAX_GAP, learnedTimeline, learnedThisMonth, withTuneSkills, tuneSkills, dueCards, tuneStatus, tuneIsReady, stats, forecast, lastPlayed, agoLabel } from '../lib/srs.js';
 import { chartText, migrateCharts } from '../lib/migrate.js';
 
 let failures = 0;
@@ -372,6 +372,43 @@ check('the growth list: learned tunes newest first, the undated last, and a mont
   // A later slip does not remove a tune from the list, or move its day.
   srs[cardId('a', 'form')] = gradeCard(srs[cardId('a', 'form')], false, '2026-10-21');
   if (learnedTimeline(srs, ['a'], skills)[0]?.on !== '2026-09-08') fail('a slip must not unlearn a tune or move its day');
+});
+
+check('skills switched off for a tune stop counting everywhere, and come back intact', () => {
+  const ALL = [{ id: 'head' }, { id: 'changes' }, { id: 'form' }, { id: 'solo' }];
+  const D = n => addDays(T0, n);
+  const srs = {};
+  // A vocal tune Zak only comps on: Changes and Form learned, Head and Solo never touched.
+  for (const s of ['changes', 'form']) srs[cardId('v', s)] = gradeCard(gradeCard(undefined, true, D(0)), true, D(3));
+  // A second tune with all four, untouched.
+  const plain = ALL, comp = withTuneSkills(ALL, { v: ['changes', 'form'] });
+  if (tuneSkills(comp, 'v').map(s => s.id).join() !== 'changes,form') fail('tuneSkills for the chosen tune');
+  if (tuneSkills(comp, 'w').length !== 4 || tuneSkills(plain, 'v').length !== 4) fail('a tune with no choice, or a plain list, means all four');
+  if (comp.length !== 4) fail('the list itself must stay the full four, for screens that show every skill');
+  // Learned and ready only with the choice applied.
+  if (learnedOn(srs, 'v', plain).learned || tuneIsReady(srs, 'v', plain)) fail('with all four counting, the tune is not learned');
+  if (learnedOn(srs, 'v', comp).on !== D(3) || !tuneIsReady(srs, 'v', comp)) fail('with Head and Solo off, it was learned on day 3');
+  if (tuneStage(srs, 'v', comp, D(4)) !== 'repertoire') fail(`stage ${tuneStage(srs, 'v', comp, D(4))}, expected repertoire`);
+  // Switched-off skills are never due, never counted.
+  const due = dueCards(srs, ['v', 'w'], comp, D(4));
+  if (due.some(c => c.tuneId === 'v')) fail(`v should have nothing due: ${due.filter(c => c.tuneId === 'v').map(c => c.skill)}`);
+  if (due.filter(c => c.tuneId === 'w').length !== 4) fail('the other tune keeps all four fresh cards');
+  const st = tuneStatus(srs, 'v', comp, D(4));
+  if (st.fresh !== 0 || st.solid !== 2 || !st.ready) fail(`tuneStatus ${JSON.stringify(st)}`);
+  const sa = stats(srs, ['v', 'w'], comp);
+  if (sa.total !== 6 || sa.solid !== 2 || sa.fresh !== 4) fail(`stats ${JSON.stringify(sa)}`);
+  if (forecast(srs, ['v'], comp, 7, D(4))[0].n !== 0) fail('the forecast must not count switched-off skills as due');
+  // Unknown or empty choices fall back to all four rather than to nothing.
+  if (tuneSkills(withTuneSkills(ALL, { v: ['bogus'] }), 'v').length !== 4 || tuneSkills(withTuneSkills(ALL, { v: [] }), 'v').length !== 4) fail('a bad choice must mean all four');
+  // Last played: the latest answer on the skills that count; nothing → null.
+  srs[cardId('v', 'head')] = gradeCard(undefined, true, D(9));   // answered, but switched off
+  if (lastPlayed(srs, 'v', comp) !== D(3)) fail(`last played ${lastPlayed(srs, 'v', comp)}, expected ${D(3)} (Head is off)`);
+  if (lastPlayed(srs, 'v', plain) !== D(9)) fail('with Head counting, its answer is the latest');
+  if (lastPlayed(srs, 'w', comp) !== null) fail('a tune with no answers has not been played');
+  const legacy = { ef: 2.5, interval: 15, reps: 3, nextDue: D(5) };   // saved before days were kept
+  if (lastPlayed({ [cardId('x', 'head')]: legacy }, 'x', plain) !== null) fail('a card with no day on record must not invent one');
+  const ago = [agoLabel(D(10), D(10)), agoLabel(D(9), D(10)), agoLabel(D(0), D(23)), agoLabel(D(0), D(95))];
+  if (ago.join('|') !== 'today|yesterday|23 days ago|3 months ago') fail(`agoLabel: ${ago.join('|')}`);
 });
 
 check('the ceiling caps the gap after the last answer, and never touches the history', () => {

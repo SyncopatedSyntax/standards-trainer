@@ -41,7 +41,7 @@ export default function ProgressTab({ tunes, byId, active, upNext, srs, skills, 
           <div style={{ fontSize: '13px', color: '#ccc' }}>tune{s.ready === 1 ? '' : 's'} you could call tonight</div>
         </div>
         <div style={{ fontSize: '11px', color: '#888', marginTop: '6px', lineHeight: 1.6 }}>
-          All four skills solid — head, changes, form and solo, each got right at least twice.
+          Every skill that counts for the tune solid — head, changes, form and solo unless you switched one off — each got right at least twice.
         </div>
         {readyTunes.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '10px' }}>
@@ -108,7 +108,7 @@ export default function ProgressTab({ tunes, byId, active, upNext, srs, skills, 
         </div>
         {timeline.length === 0 ? (
           <div style={{ fontSize: '11.5px', color: '#888', marginTop: '6px', lineHeight: 1.6 }}>
-            None yet. A tune counts as learned the first day all four skills are solid at once — and stays learned, even if it later needs a refresher.
+            None yet. A tune counts as learned the first day all its skills are solid at once — and stays learned, even if it later needs a refresher.
           </div>
         ) : (
           <>

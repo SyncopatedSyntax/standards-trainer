@@ -15,11 +15,11 @@ import { btn, panel, labelCss, Field } from '../components/ui.jsx';
 import { ACCENT } from '../lib/tool.js';
 import TuneStatus, { groupByStage, STAGES, UP_NEXT } from '../components/TuneStatus.jsx';
 import { TIERS, CORE_TUNES } from '../data/tunes.js';
-import { tuneIsReady, todayStr } from '../lib/srs.js';
+import { tuneIsReady, todayStr, lastPlayed, agoLabel } from '../lib/srs.js';
 
 const slug = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 
-export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skills, onActivate, onDeactivate, onSetNote, onToggleNext, onAddTune, onRemoveCustom, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, scrollRef, openId, onOpened }) {
+export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skills, onActivate, onDeactivate, onSetNote, onToggleNext, onAddTune, onRemoveCustom, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, onSetTuneSkill, scrollRef, openId, onOpened }) {
   const [sel, setSel] = useState(null);
   // Open on your own repertoire once you have one. The core path is the right
   // first screen exactly once — after that, "what am I working on" is the
@@ -105,7 +105,7 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
   if (tune) {
     return <TuneDetail tune={tune} active={active} upNext={upNext} srs={srs} notes={notes} skills={skills}
       onBack={back} onActivate={onActivate} onDeactivate={onDeactivate}
-      onSetNote={onSetNote} onToggleNext={onToggleNext} onGrade={onGrade} onUngrade={onUngrade} onEditAnswer={onEditAnswer} onDeleteAnswer={onDeleteAnswer} onClearEarlier={onClearEarlier} onRemoveCustom={onRemoveCustom} />;
+      onSetNote={onSetNote} onToggleNext={onToggleNext} onGrade={onGrade} onUngrade={onUngrade} onEditAnswer={onEditAnswer} onDeleteAnswer={onDeleteAnswer} onClearEarlier={onClearEarlier} onSetTuneSkill={onSetTuneSkill} onRemoveCustom={onRemoveCustom} />;
   }
 
   const saveNew = () => {
@@ -220,6 +220,12 @@ export default function TunesTab({ tunes, byId, active, upNext, srs, notes, skil
                       <div style={{ fontSize: '10px', color: '#777', marginTop: '1px' }}>
                         {t.key === 'modal' ? 'modal' : t.key} · {t.bars} bars · {t.feel}
                       </div>
+                      {/* How long since you touched it — the honest measure of
+                          what is going stale, whatever the schedule says. */}
+                      {isActive && (() => {
+                        const p = lastPlayed(srs, t.id, skills);
+                        return <div style={{ fontSize: '10px', color: '#8a88a0', marginTop: '2px' }}>{p ? `Last played ${agoLabel(p, today)}` : 'Not played yet'}</div>;
+                      })()}
                     </div>
                     {isActive
                       ? <TuneStatus srs={srs} tuneId={t.id} skills={skills} today={today} />

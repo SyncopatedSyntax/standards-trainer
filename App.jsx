@@ -13,8 +13,8 @@ import { TabBar } from '@fretworks/design';
 import StandardsHeader from './components/StandardsHeader.jsx';
 import { TOOL, ACCENT } from './lib/tool.js';
 import { CORE_TUNES, SKILLS } from './data/tunes.js';
-import { K_ACTIVE, K_SRS, K_NOTES, K_CUSTOM, K_NEXT, K_SETTINGS, read, write } from './lib/store.js';
-import { gradeCard, ungradeCard, editAnswer, deleteAnswer, clearEarlier, cardId, withMaxGap, DEFAULT_MAX_GAP } from './lib/srs.js';
+import { K_ACTIVE, K_SRS, K_NOTES, K_CUSTOM, K_NEXT, K_SETTINGS, K_TUNE_SKILLS, read, write } from './lib/store.js';
+import { gradeCard, ungradeCard, editAnswer, deleteAnswer, clearEarlier, cardId, withMaxGap, DEFAULT_MAX_GAP, withTuneSkills } from './lib/srs.js';
 import { migrateCharts } from './lib/migrate.js';
 import TodayTab from './tabs/TodayTab.jsx';
 import TunesTab from './tabs/TunesTab.jsx';
@@ -42,6 +42,7 @@ export default function App() {
   const [custom, setCustom] = useState([]);
   const [upNext, setUpNext] = useState([]);
   const [settings, setSettings] = useState({});
+  const [tuneSkillMap, setTuneSkillMap] = useState({});   // js_skills
   // A tune the user asked to open from another tab. TunesTab owns the actual
   // detail-view state; this is just the request, cleared once it lands.
   const [openTune, setOpenTune] = useState(null);
@@ -53,6 +54,7 @@ export default function App() {
   const activeRef = useRef(active); activeRef.current = active;
   const notesRef = useRef(notes); notesRef.current = notes;
   const nextRef = useRef(upNext); nextRef.current = upNext;
+  const tuneSkillRef = useRef(tuneSkillMap); tuneSkillRef.current = tuneSkillMap;
 
   useEffect(() => {
     setActive(read(K_ACTIVE, []));
@@ -61,6 +63,7 @@ export default function App() {
     setCustom(read(K_CUSTOM, []));
     setUpNext(read(K_NEXT, []));
     setSettings(read(K_SETTINGS, {}));
+    setTuneSkillMap(read(K_TUNE_SKILLS, {}));
     setLoaded(true);
   }, []);
 
@@ -110,7 +113,25 @@ export default function App() {
     const s = { ...srsRef.current };
     for (const sk of SKILLS) delete s[cardId(id, sk.id)];
     setSrs(s); write(K_SRS, s);
+    // Its skill choice goes with it: taken back on later, it starts with all four.
+    if (tuneSkillRef.current[id]) {
+      const { [id]: _gone, ...rest } = tuneSkillRef.current;
+      setTuneSkillMap(rest); write(K_TUNE_SKILLS, rest);
+    }
   }, []);
+
+  // Switch one skill on or off for one tune (lib/srs.js withTuneSkills). At
+  // least one always stays on. A tune back to all four is removed from the
+  // map, so only tunes that differ are ever stored.
+  const setTuneSkill = useCallback((tuneId, skillId, on) => {
+    const cur = tuneSkillRef.current[tuneId] || SKILLS.map(s => s.id);
+    const nextIds = SKILLS.map(s => s.id).filter(id => (id === skillId ? on : cur.includes(id)));
+    if (!nextIds.length) return;
+    const m = { ...tuneSkillRef.current };
+    if (nextIds.length === SKILLS.length) delete m[tuneId]; else m[tuneId] = nextIds;
+    setTuneSkillMap(m); write(K_TUNE_SKILLS, m);
+  }, []);
+  const skillsView = useMemo(() => withTuneSkills(SKILLS, tuneSkillMap), [tuneSkillMap]);
 
   // Every change to a card goes through lib/srs.js, which keeps its answer
   // history and replays the schedule from it: a repeat answer on the same day
@@ -234,7 +255,7 @@ export default function App() {
     <div style={{ background: '#0f0e17', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ACCENT, fontSize: '16px' }}>Loading…</div>
   );
 
-  const shared = { tunes, byId, active, upNext, srs: srsView, notes, skills: SKILLS };
+  const shared = { tunes, byId, active, upNext, srs: srsView, notes, skills: skillsView };
 
   return (
     <div style={{ background: '#0f0e17', height: '100dvh', display: 'flex', flexDirection: 'column', color: '#fffffe', fontFamily: 'var(--font-body)', WebkitFontSmoothing: 'antialiased' }}>
@@ -244,7 +265,7 @@ export default function App() {
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'none' }}>
         <div style={{ paddingBottom: 'max(32px,env(safe-area-inset-bottom))' }}>
           {tab === 'today' && <TodayTab {...shared} onGrade={grade} onUngrade={ungrade} onGoTunes={() => goTab('tunes')} onGoTune={goTune} />}
-          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onToggleNext={toggleNext} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} onEditAnswer={editAns} onDeleteAnswer={deleteAns} onClearEarlier={clearEarly} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
+          {tab === 'tunes' && <TunesTab {...shared} onActivate={activate} onDeactivate={deactivate} onSetNote={setNote} onToggleNext={toggleNext} onAddTune={addTune} onRemoveCustom={removeCustom} onGrade={grade} onUngrade={ungrade} onEditAnswer={editAns} onDeleteAnswer={deleteAns} onClearEarlier={clearEarly} onSetTuneSkill={setTuneSkill} scrollRef={scrollRef} openId={openTune} onOpened={clearOpenTune} />}
           {tab === 'progress' && <ProgressTab {...shared} onGoTunes={() => goTab('tunes')} onGoTune={goTune} />}
           {tab === 'guide' && <GuideTab />}
           {tab === 'settings' && <SettingsTab maxGap={maxGap} onSetMaxGap={setMaxGap} />}

@@ -6,7 +6,7 @@
 // in each place is how a list and a detail view start disagreeing.
 
 import { ACCENT } from '../lib/tool.js';
-import { cardId, skillState, tuneStatus, tuneStage, relativeDay, todayStr } from '../lib/srs.js';
+import { cardId, skillState, tuneStatus, tuneStage, relativeDay, todayStr, tuneSkills } from '../lib/srs.js';
 
 // Solid is the accent; learning is amber (the same amber the Progress bar
 // uses); never-seen is a hollow outline, so "not started" reads as absence
@@ -17,10 +17,16 @@ const STATE = {
   fresh: { fill: 'transparent', border: '#3a3852' },
 };
 
+// A skill switched off for this tune keeps its place as a short dash, so the
+// dots still line up with the "head · changes · form · solo" legend.
 export function SkillDots({ srs, tuneId, skills, size = 8 }) {
+  const counted = new Set(tuneSkills(skills, tuneId).map(s => s.id));
   return (
-    <span style={{ display: 'inline-flex', gap: '4px', flexShrink: 0 }}>
+    <span style={{ display: 'inline-flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
       {skills.map(s => {
+        if (!counted.has(s.id)) {
+          return <span key={s.id} title={`${s.label} — off for this tune`} style={{ width: `${size}px`, height: '2px', background: '#3a3852', borderRadius: '1px' }} />;
+        }
         const st = STATE[skillState(srs[cardId(tuneId, s.id)])];
         return (
           <span key={s.id} title={s.label}
@@ -68,7 +74,7 @@ export const STAGES = [
   { id: 'refresher', label: 'Needs a refresher', colour: '#ff8f8f',
     blurb: 'Learned, but something is due or has slipped. Play it through and grade it.' },
   { id: 'learning', label: 'Learning', colour: '#e8a838',
-    blurb: 'Taken on, not yet solid on all four skills at once.' },
+    blurb: 'Taken on, not yet solid on all its skills at once.' },
   { id: 'repertoire', label: 'In repertoire', colour: ACCENT,
     blurb: 'Learned, and nothing due. These come back on their own.' },
 ];

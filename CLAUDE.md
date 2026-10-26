@@ -63,6 +63,10 @@ this app is covered by both with no extra wiring.
   removes it (`activate` in App).
 - `js_settings` — `{ maxGap }`, the refresher ceiling in days (`0` = none).
   Absent reads as `DEFAULT_MAX_GAP` (60), and it is written only when changed.
+- `js_skills` — `{ tuneId: ['changes', 'form'] }`: the skills that count for a
+  tune, stored **only for tunes where some are switched off** (back to all four
+  removes the entry; dropping the tune removes it too). See *Which skills count
+  for a tune* below.
 - `js_charts` — **retired** with the bar grid. `lib/migrate.js` runs once from
   App's load effect: any grid with something typed in it is written into that
   tune's notes as plain text (`A: | Cm7 | F7 | … |`, four bars a line, a
@@ -160,8 +164,8 @@ register: the tune page lights the chosen button and adds a "Saved for today —
 next review …" line with Undo; on Today the answered row turns into a line
 with the result, the next review and Undo (see Tabs).
 
-`tuneIsReady()` = all four skills at `reps >= 2`, the same "learned" bar
-Diatonic uses. That drives the Progress tab's headline number: how many tunes
+`tuneIsReady()` = all of the tune's skills (four, unless some are switched
+off) at `reps >= 2`, the same "learned" bar Diatonic uses. That drives the Progress tab's headline number: how many tunes
 you could actually call tonight.
 
 ### Stages: learning, in repertoire, needs a refresher
@@ -194,6 +198,41 @@ a tune from the list nor moves its day (verify pins both).
 Learning tunes stay in Today like everything else — Zak's call. **Up next** is
 the fourth group in Mine (between learning and repertoire), and it is a
 planning list, never scheduled.
+
+### Which skills count for a tune
+
+Not every tune needs all four — Zak only comps on most of the vocal
+standards, so Head and Solo there would sit in Today forever and keep the tune
+from ever counting as learned. The tune page gives each skill an **On/Off**
+switch (at least one stays on).
+
+`withTuneSkills(SKILLS, js_skills)` returns the full skills list with a
+`forTune(id)` lookup attached, and App passes *that* everywhere `skills` always
+went. Every per-tune calculation in lib/srs.js — `dueCards`, `tuneStatus`,
+`tuneIsReady`, `learnedOn`, `stats`, `forecast`, `tuneHistory`,
+`earlierAnswers`, `lastPlayed` — goes through `tuneSkills(skills, id)`, so the
+choice is applied in one place and no screen can forget it; screens that show
+all four (the switches, the dot legend, Today's chips) still see the full list.
+A plain array, as verify.mjs mostly passes, means "all four". `SkillDots` draws
+a switched-off skill as a short dash, so the dots still line up with the
+"head · changes · form · solo" legend.
+
+A switched-off skill's **card is kept**: it is simply not due and not counted,
+and switching it back on restores it, answers and schedule intact. Because
+`learnedOn` replays only the counted skills, switching one off can make a tune
+learned (on the day its other skills were all solid) — which is the point.
+verify.mjs pins all of this, including that a bad or empty choice falls back to
+all four rather than to none.
+
+### Last played
+
+`lastPlayed()` is the latest `last` across the tune's counted skills — the last
+day you answered anything on it — shown as "Last played 23 days ago"
+(`agoLabel`) on every taken-on tune in the Tunes lists and under the title on
+its page. A card saved before days were recorded has no `last` and is skipped
+rather than guessed (verify pins it), so such a tune reads "Not played yet"
+until its next answer. It deliberately ignores the refresher ceiling and the
+schedule: it is the honest measure of what is going stale.
 
 ### The refresher ceiling
 
@@ -233,8 +272,9 @@ answer and make the setting irreversible.
   — each in `byAttention` order (due count, then soonest review); tier headings
   there would be chrome, not information. The header counts learned / learning
   / up next. Core and All stay grouped by tier, because there the
-  curriculum's shape *is* the point. Tune detail is pushed from here, not a
-  tab.
+  curriculum's shape *is* the point. Every taken-on tune's row says when it
+  was last played. Tune detail is pushed from here, not a tab; it carries the
+  per-skill On/Off switches.
 
   **Adding a tune is core path first, your own tune last** — Zak's rule. Mine
   carries **+ Add a tune** in its header, so it never sinks below a long list,

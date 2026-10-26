@@ -1,4 +1,5 @@
-// One tune: the facts it ships with, the four skills and where they stand,
+// One tune: the facts it ships with, its skills and where they stand (each
+// can be switched off for this tune — lib/srs.js withTuneSkills),
 // its answer history, and your notes. The chart itself lives in iReal Pro or
 // forScore — this app tracks what you know, not the music.
 
@@ -7,15 +8,17 @@ import { btn, panel, labelCss, TextArea } from './ui.jsx';
 import AnswerHistory from './AnswerHistory.jsx';
 import { StageBadge, UP_NEXT } from './TuneStatus.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { cardId, isSkillSolid, todayStr, tuneStage, learnedOn, relativeDay, gradedToday, dayLabel } from '../lib/srs.js';
+import { cardId, isSkillSolid, todayStr, tuneStage, learnedOn, relativeDay, gradedToday, dayLabel, tuneSkills, lastPlayed, agoLabel } from '../lib/srs.js';
 
-export default function TuneDetail({ tune, active, upNext, srs, notes, skills, onBack, onActivate, onDeactivate, onSetNote, onToggleNext, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, onRemoveCustom }) {
+export default function TuneDetail({ tune, active, upNext, srs, notes, skills, onBack, onActivate, onDeactivate, onSetNote, onToggleNext, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, onSetTuneSkill, onRemoveCustom }) {
   const today = todayStr();
   const isActive = active.includes(tune.id);
   const planned = !isActive && upNext.includes(tune.id);
   const stage = isActive ? tuneStage(srs, tune.id, skills, today) : planned ? 'next' : null;
   const ready = stage === 'repertoire';
   const learned = isActive && stage !== 'learning' ? learnedOn(srs, tune.id, skills) : null;
+  const played = isActive ? lastPlayed(srs, tune.id, skills) : null;
+  const counted = new Set(tuneSkills(skills, tune.id).map(s => s.id));
   const [confirmDrop, setConfirmDrop] = useState(false);
 
   const fact = (k, v) => (
@@ -35,9 +38,15 @@ export default function TuneDetail({ tune, active, upNext, srs, notes, skills, o
           <StageBadge stage={stage} />
         </div>
         <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>{tune.composer}</div>
-        {learned && (
-          <div style={{ fontSize: '11.5px', color: ACCENT, marginTop: '4px' }}>
-            {learned.on ? `Learned ${dayLabel(learned.on, today).replace(/^(Today|Yesterday)$/, s => s.toLowerCase())}` : 'Learned before the history was kept'}
+        {isActive && (
+          <div style={{ fontSize: '11.5px', marginTop: '4px', lineHeight: 1.5 }}>
+            {learned && (
+              <span style={{ color: ACCENT }}>
+                {learned.on ? `Learned ${dayLabel(learned.on, today).replace(/^(Today|Yesterday)$/, s => s.toLowerCase())}` : 'Learned before the history was kept'}
+                {' · '}
+              </span>
+            )}
+            <span style={{ color: '#999' }}>{played ? `Last played ${agoLabel(played, today)}` : 'Not played yet'}</span>
           </div>
         )}
         <div style={{ marginTop: '10px', borderTop: '1px solid #1a1928', paddingTop: '8px' }}>
@@ -89,12 +98,38 @@ export default function TuneDetail({ tune, active, upNext, srs, notes, skills, o
         </div>
       ) : (
         <div style={{ ...panel, marginBottom: '12px' }}>
-          <div style={labelCss}>The four skills</div>
+          <div style={labelCss}>Skills</div>
+          <div style={{ fontSize: '11px', color: '#888', lineHeight: 1.55, marginBottom: '9px' }}>
+            Switch off any you don't need for this tune — the head of a vocal tune you only comp on, say.
+            It stops coming up and stops counting toward learned; its answers are kept, so switching it back on restores it.
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {skills.map(s => {
               const id = cardId(tune.id, s.id);
               const card = srs[id];
               const solid = isSkillSolid(card);
+              const on = counted.has(s.id);
+              const last = on && counted.size === 1;   // at least one always stays on
+              const toggle = (
+                <button role="switch" aria-checked={on} aria-label={`${s.label} counts for this tune`} disabled={last}
+                  onClick={() => onSetTuneSkill(tune.id, s.id, !on)}
+                  title={last ? 'At least one skill stays on' : undefined}
+                  style={{ ...btn(on), minHeight: '36px', minWidth: '52px', padding: '4px 10px', opacity: last ? 0.45 : 1, cursor: last ? 'default' : 'pointer' }}>
+                  {on ? 'On' : 'Off'}
+                </button>
+              );
+              if (!on) {
+                return (
+                  <div key={s.id} style={{ background: '#0f0e17', border: '1px dashed #2a2840', borderRadius: '9px', padding: '9px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: '#444', fontSize: '14px' }}>–</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#777', flex: 1 }}>{s.label}</span>
+                      {toggle}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#666', marginTop: '4px', lineHeight: 1.5 }}>Not counted for this tune.</div>
+                  </div>
+                );
+              }
               // Answered today: the chosen button stays lit and a line says it
               // was saved. Tapping again does not grade twice — the other button
               // changes today's answer instead (lib/srs.js gradeCard).
@@ -108,6 +143,7 @@ export default function TuneDetail({ tune, active, upNext, srs, notes, skills, o
                     <span style={{ color: solid ? ACCENT : '#555', fontSize: '14px' }}>{solid ? '●' : '○'}</span>
                     <span style={{ fontSize: '13px', fontWeight: 700, color: '#fff', flex: 1 }}>{s.label}</span>
                     <span style={{ fontSize: '10px', color: '#888', fontFamily: 'var(--font-mono)' }}>{relativeDay(card?.nextDue, today)}</span>
+                    {toggle}
                   </div>
                   <div style={{ fontSize: '11px', color: '#888', margin: '4px 0 7px', lineHeight: 1.5 }}>{s.blurb}</div>
                   <div style={{ display: 'flex', gap: '6px' }}>
