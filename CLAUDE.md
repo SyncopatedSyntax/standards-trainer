@@ -165,8 +165,8 @@ next review …" line with Undo; on Today the answered row turns into a line
 with the result, the next review and Undo (see Tabs).
 
 `tuneIsReady()` = all of the tune's skills (four, unless some are switched
-off) at `reps >= 2`, the same "learned" bar Diatonic uses. That drives the Progress tab's headline number: how many tunes
-you could actually call tonight.
+off) at `reps >= 2`, the same "learned" bar Diatonic uses. That drives the
+Progress tab's headline number: how many tunes you could actually call tonight.
 
 ### Stages: learning, in repertoire, needs a refresher
 
@@ -201,9 +201,9 @@ planning list, never scheduled.
 
 ### Which skills count for a tune
 
-Not every tune needs all four — Zak only comps on most of the vocal
-standards, so Head and Solo there would sit in Today forever and keep the tune
-from ever counting as learned. The tune page gives each skill an **On/Off**
+Not every tune needs all four. On a vocal standard you only ever comp on, say,
+Head and Solo would sit in Today forever and keep the tune from ever counting
+as learned. The tune page gives each skill an **On/Off**
 switch (at least one stays on).
 
 `withTuneSkills(SKILLS, js_skills)` returns the full skills list with a
