@@ -90,9 +90,13 @@ What differs is only what a **card** is: elsewhere a chord or a shape, here one
 skill on one tune. That is the whole point — the changes to a tune you play
 weekly stay solid while its head quietly comes due.
 
-**Dates are UTC calendar days**, and `addDays` does UTC arithmetic to match
-(see the root CLAUDE.md, *Dates in the SRS trainers*). This file's copy used
-local `setDate`, which lost a day whenever a gap crossed a clock change.
+**A day is the phone's own calendar day** — `todayStr()` reads the local
+date — and `addDays` does calendar arithmetic on the day strings in UTC (see
+the root CLAUDE.md, *Dates in the SRS trainers*). Zak saw "Last played today"
+on tunes he had played the night before: `todayStr()` used to be the UTC date,
+so the day rolled over at 5pm in California and 8am in Singapore. Answers saved
+under that rule keep their dates (a few late-evening ones in the Americas are
+filed a day ahead); they can be moved in History if it matters.
 
 **One answer per card per day** (`gradeCard`). Zak found that tapping Got it
 several times on a tune's page kept pushing the next review further out —
@@ -154,9 +158,9 @@ editor (Got it/Shaky, a date input capped at today, Save, Delete — two taps).
 A confirmation line after each change reads the new next review back from the
 schedule. Progress has **Recent answers** across all tunes, read-only, tapping
 through to the tune — an answer is edited next to the other skills it is
-scheduled with, not from a list of strangers. Dates are UTC days (`todayStr`),
-so `dayLabel()` formats them in UTC; formatting one in local time puts it on the
-previous day anywhere west of Greenwich. The Progress forecast's weekday letters
+scheduled with, not from a list of strangers. A day string parses as UTC
+midnight, so `dayLabel()` formats it in UTC; formatting one in local time puts
+it on the previous day anywhere west of Greenwich. The Progress forecast's weekday letters
 had exactly that bug and now pass `timeZone: 'UTC'` too.
 
 Feedback, because a tap that leaves no trace reads as a tap that did not
