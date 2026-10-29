@@ -6,7 +6,7 @@
 // are learn-once, not per-tune, so scheduling them per tune would be noise.
 
 import { useState } from 'react';
-import { panel, labelCss } from '../components/ui.jsx';
+import { panel } from '../components/ui.jsx';
 import { ACCENT } from '../lib/tool.js';
 import { SKILLS } from '../data/tunes.js';
 
