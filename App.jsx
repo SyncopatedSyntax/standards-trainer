@@ -189,12 +189,7 @@ export default function App() {
     setMeta('viewport', 'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover');
     setMeta('apple-mobile-web-app-capable', 'yes');
     setMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
-    setMeta('apple-mobile-web-app-title', 'Fretworks');
 
-    // Single PWA: point at the shell's manifest rather than competing with it.
-    let mlink = document.querySelector('link[rel="manifest"]');
-    if (!mlink) { mlink = document.createElement('link'); mlink.rel = 'manifest'; document.head.appendChild(mlink); }
-    mlink.href = '/manifest.webmanifest';
 
     // In standalone PWA mode WebKit initialises window.scrollY to the
     // safe-area inset (~50px), so taps register ~50px above where they look.

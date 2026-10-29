@@ -1,0 +1,29 @@
+{
+  "id": "/standards/",
+  "name": "Standards Trainer",
+  "short_name": "Standards",
+  "description": "Learn jazz standards properly — head, changes, form and soloing, each on its own review schedule — until you can call one at a jam.",
+  "start_url": "/standards/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f0e17",
+  "theme_color": "#0f0e17",
+  "icons": [
+    {
+      "src": "/standards/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/standards/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/standards/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
