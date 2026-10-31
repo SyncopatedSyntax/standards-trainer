@@ -46,7 +46,7 @@ Prefix **`js_`** (`lib/store.js`). Load-bearing twice: `ProgressBackup` exports
 by prefix, and the shell's `/backup` screen sweeps every key on the origin — so
 this app is covered by both with no extra wiring.
 
-- `data/tunes.js` → `CORE_TUNES` (40, facts only), `TIERS`, `SKILLS`.
+- `data/tunes.js` → `CORE_TUNES` (44, facts only), `TIERS`, `SKILLS`.
   Reference data, never written to. **Array order is the curriculum** — the
   verify script asserts tiers never go backwards. Each tune also carries
   `facts[]` and `guitar[]` — see *Facts and guitar notes* below.
@@ -374,6 +374,24 @@ Boogie Woogie Bugle Boy is filed as a 12-bar blues on the strength of
 Wikipedia listing it among well-known twelve-bar songs; its sheet music key is
 C.
 
+**The late-October 2026 additions** (Sentimental Journey, Jersey Bounce, As
+Long as I Live, Flying Home — Zak's picks, at the end of tier 3, easiest
+first) were researched the same way, through web search only: this session
+could not reach jazzstandards.com or Wikipedia mirrors directly. Zak gave no
+keys, so each is the published sheet-music key. The weak calls:
+- **Jersey Bounce** — C is the published key (Musicnotes), but a lead-sheet
+  site has it in B♭; its guitar note says so. AABA 32 rests on one
+  aggregator. Its chart peak is reported as both number one and number two,
+  and the text says sources disagree.
+- **Sentimental Journey** — AABA 32 rests on one aggregator; C is the
+  published key.
+- **As Long as I Live** — F comes from modern editions, not a first printing.
+  AABA 32 is from a lead-sheet site, supported by a NYFOS essay that describes
+  three A sections and a four-line bridge.
+- **Flying Home** — A♭ is the published key; one transcription of the 1939
+  record gives E♭. The sextet's studio date is given as 2 October and as
+  6 November 1939, so the fact names both.
+
 `verify.mjs` catches the mechanical failures only: both fields present, at
 least two entries each, nothing under 40 characters (a one-clause note is
 almost always an unfinished placeholder), and every tune having at least one
@@ -392,7 +410,7 @@ Each serves one of the three jobs; none duplicates iReal Pro or forScore.
 
 1. **One refresher per learned tune** instead of four: "play it through" →
    Got it, or Shaky + which skill slipped, and only that skill drops back.
-   At 40 tunes × 4 skills the queue is 160 cards; this is the fix for that, and
+   At 44 tunes × 4 skills the queue is 176 cards; this is the fix for that, and
    the biggest change on the list — discuss with Zak before building.
 2. **A link per tune into iReal Pro / forScore**, so a refresher is one tap
    from the chart. Check first whether either app opens a specific song by

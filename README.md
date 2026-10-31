@@ -9,7 +9,7 @@ a Real Book — not a replacement for them. Those hold the music; this keeps tra
 of three things: which standards you are **learning**, which you have
 **learned**, and which **need a refresher** before they fade.
 
-Forty standards in teaching order, four skills each (head, changes, form,
+Forty-four standards in teaching order, four skills each (head, changes, form,
 solo), and a spaced-repetition queue that tells you what to play today. Your
 tunes are grouped by stage, with an **Up next** list for what you plan to learn,
 and a ceiling on how long any tune can go unreviewed (two months unless you

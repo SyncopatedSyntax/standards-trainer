@@ -1,8 +1,9 @@
 // ── The core curriculum ───────────────────────────────────────────────────
-// Forty tunes that actually get called at jams, ordered so each tier only
+// Forty-four tunes that actually get called at jams, ordered so each tier only
 // asks for one new thing. (Twenty-five at launch; Zak added fifteen more in
 // October 2026 — mostly swing-era vocal standards, which landed at the end of
-// tier 3, plus a jump blues in tier 1 and a sixteen-bar minor blues in tier 2.)
+// tier 3, plus a jump blues in tier 1 and a sixteen-bar minor blues in tier 2 —
+// then four more swing-era tunes at the end of tier 3 at the end of the month.)
 //
 // WHAT IS IN HERE, AND WHY IT STOPS THERE
 //
@@ -499,6 +500,62 @@ export const CORE_TUNES = [
     guitar: [
       'Play it as a solo chord melody: tune on the top string, a bass note with the thumb, and nothing in a hurry.',
       'Stan Getz recorded it in G. Practise holding a melody note with vibrato rather than picking it again — that is the difference between a ballad and a slow tune.',
+    ],
+  },
+  { id: 'sentimental-journey', title: 'Sentimental Journey', composer: 'Les Brown, Ben Homer & Bud Green', key: 'C', form: 'AABA', bars: 32,
+    feel: 'Medium swing', tempoLo: 100, tempoHi: 150, tier: 3,
+    why: 'The homecoming song of 1945 — a short, singable AABA the whole room knows, and a good one to learn by ear.',
+    facts: [
+      'Music by Les Brown and Ben Homer, words by Bud Green, published in 1944. Brown’s band had been playing it but could not record it until the 1942–44 musicians’ strike ended.',
+      'Les Brown and His Band of Renown recorded it for Columbia on 20 November 1944 with Doris Day singing. It entered the Billboard chart on 29 March 1945, stayed 23 weeks and went to number one — Day’s first.',
+      'Its release came as the war in Europe ended, and it is often described as the unofficial homecoming song of returning servicemen.',
+    ],
+    guitar: [
+      'Work it up as a chord melody: the tune on the top two strings, a three-note grip under each new melody note, and let the chords ring between phrases.',
+      'Comp it in two first — thumb on a bass note on 1 and 3, a short chord on 2 and 4 — then go to four to the bar for the last A section.',
+      'In C, the tonic sits at the 8th fret with a root-on-6 grip and at the 3rd fret with root-on-5. Pick one area and keep every chord within four frets of it.',
+    ],
+  },
+  { id: 'jersey-bounce', title: 'Jersey Bounce', composer: 'Tiny Bradshaw, Eddie Johnson & Bobby Plater', key: 'C', form: 'AABA', bars: 32,
+    feel: 'Medium-up swing', tempoLo: 140, tempoHi: 190, tier: 3,
+    why: 'Benny Goodman’s big instrumental hit of 1942 — a swing dance tune, made to be played rather than sung.',
+    facts: [
+      'Credited to Tiny Bradshaw, Eddie Johnson and Bobby Plater, who played alto saxophone in Bradshaw’s band from 1940 to 1942. Earl Hines’s orchestra recorded it on 3 April 1941, issued on Bluebird.',
+      'Benny Goodman’s orchestra recorded Mel Powell’s arrangement for Columbia on 15 January 1942 and had the big hit with it; chart sources disagree on whether it peaked at number one or number two.',
+      'The lyric is by Buddy Feyne, signed “Robert B. Wright”, the pen name he had used for After Hours. One account says he needed it because the song was written during the 1941 ASCAP strike.',
+    ],
+    guitar: [
+      'Comp it like a swing-band rhythm guitarist: three-note voicings on the middle strings, four even strokes to the bar, a little more weight on 2 and 4.',
+      'The published sheet music is in C, but at least one jam lead sheet has it in B♭. Learn it with movable grips — root on the 6th string for one key, the 5th string for the other — so either call costs nothing.',
+      'The three A sections are the same eight bars. Find one fingering for that phrase in a single position and keep it, so the bridge is the only place your hand has to travel.',
+    ],
+  },
+  { id: 'as-long-as-i-live', title: 'As Long as I Live', composer: 'Harold Arlen & Ted Koehler', key: 'F', form: 'AABA', bars: 32,
+    feel: 'Medium swing', tempoLo: 120, tempoHi: 180, tier: 3,
+    why: 'A Harold Arlen song that swings rather than sighs — an AABA whose bridge ends in a line of quick notes you have to finger in advance.',
+    facts: [
+      'Written by Harold Arlen and Ted Koehler for the 24th edition of the Cotton Club Parade, which opened on 23 March 1934 — the last Cotton Club show the pair wrote together.',
+      'It was introduced by Avon Long and Lena Horne, then sixteen and in the club’s chorus line. By one account it was Long’s idea to bring her out of the line to sing it with him.',
+      'Arlen made the first record himself, singing with Arthur Schutt at the piano, for Victor on 6 February 1934. Benny Goodman’s orchestra recorded it that May with Jack Teagarden singing, and Ella Fitzgerald cut it for Ella Swings Lightly in 1958.',
+    ],
+    guitar: [
+      'The last line of the bridge is packed with quick notes. Slow it down and settle its fingering in one position before you take it in tempo — that phrase decides whether you can play the head.',
+      'In F, comp from root-on-6 grips around the 1st fret and root-on-5 grips around the 8th. Choose one area for a whole chorus so the changes stay under your hand.',
+      'Keep the comping light: short, damped three-note voicings on the middle strings, four to the bar, and leave the low end to the bass.',
+    ],
+  },
+  { id: 'flying-home', title: 'Flying Home', composer: 'Benny Goodman & Lionel Hampton', key: 'Ab', form: 'AABA', bars: 32,
+    feel: 'Fast swing', tempoLo: 180, tempoHi: 250, tier: 3,
+    why: 'A fast riff tune with a famous guitar solo — Charlie Christian’s, on the 1939 sextet record — and a form you have to swing hard.',
+    facts: [
+      'Lionel Hampton is said to have worked the theme out whistling while he waited, nervously, to board his first flight. It is credited to Hampton and Benny Goodman, with a lyric by Sid Robin.',
+      'The Benny Goodman Sextet recorded it for Columbia in autumn 1939 — sources give 2 October or 6 November — with Hampton on vibes and Charlie Christian on electric guitar. An aircheck of Christian playing it with the sextet survives from 19 August that year.',
+      'Hampton’s own big band recorded it in 1942 with a tenor solo by the nineteen-year-old Illinois Jacquet, one of the first honking tenor solos on record, and it became Hampton’s biggest hit. Ella Fitzgerald’s scat version followed on 4 October 1945.',
+    ],
+    guitar: [
+      'Learn the opening of Charlie Christian’s solo from the 1939 sextet record by ear, a phrase at a time. Single-note lines that sound like a horn, on an amplified guitar — the way jazz guitar has soloed ever since.',
+      'The head is built on riffs at a fast tempo. Play them short and clipped, and damp the strings between phrases so the gaps are part of the time.',
+      'The sheet music is in A♭. Use root-on-6 grips around the 4th fret and root-on-5 grips around the 11th, so the changes never pull your hand far from where the melody sits.',
     ],
   },
 
