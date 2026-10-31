@@ -516,7 +516,7 @@ export const CORE_TUNES = [
       'In C, the tonic sits at the 8th fret with a root-on-6 grip and at the 3rd fret with root-on-5. Pick one area and keep every chord within four frets of it.',
     ],
   },
-  { id: 'jersey-bounce', title: 'Jersey Bounce', composer: 'Tiny Bradshaw, Eddie Johnson & Bobby Plater', key: 'C', form: 'AABA', bars: 32,
+  { id: 'jersey-bounce', title: 'Jersey Bounce', composer: 'Tiny Bradshaw, Eddie Johnson & Bobby Plater', key: 'F', form: 'AABA', bars: 32,
     feel: 'Medium-up swing', tempoLo: 140, tempoHi: 190, tier: 3,
     why: 'Benny Goodman’s big instrumental hit of 1942 — a swing dance tune, made to be played rather than sung.',
     facts: [
@@ -526,7 +526,7 @@ export const CORE_TUNES = [
     ],
     guitar: [
       'Comp it like a swing-band rhythm guitarist: three-note voicings on the middle strings, four even strokes to the bar, a little more weight on 2 and 4.',
-      'The published sheet music is in C, but at least one jam lead sheet has it in B♭. Learn it with movable grips — root on the 6th string for one key, the 5th string for the other — so either call costs nothing.',
+      'In F, comp from root-on-6 grips at the 1st fret or root-on-5 grips around the 8th. The 8th-fret area keeps the whole form under one hand with no open strings, so it moves to any other key unchanged.',
       'The three A sections are the same eight bars. Find one fingering for that phrase in a single position and keep it, so the bridge is the only place your hand has to travel.',
     ],
   },
@@ -544,7 +544,7 @@ export const CORE_TUNES = [
       'Keep the comping light: short, damped three-note voicings on the middle strings, four to the bar, and leave the low end to the bass.',
     ],
   },
-  { id: 'flying-home', title: 'Flying Home', composer: 'Benny Goodman & Lionel Hampton', key: 'Ab', form: 'AABA', bars: 32,
+  { id: 'flying-home', title: 'Flying Home', composer: 'Benny Goodman & Lionel Hampton', key: 'Eb', form: 'AABA', bars: 32,
     feel: 'Fast swing', tempoLo: 180, tempoHi: 250, tier: 3,
     why: 'A fast riff tune with a famous guitar solo — Charlie Christian’s, on the 1939 sextet record — and a form you have to swing hard.',
     facts: [
@@ -555,7 +555,7 @@ export const CORE_TUNES = [
     guitar: [
       'Learn the opening of Charlie Christian’s solo from the 1939 sextet record by ear, a phrase at a time. Single-note lines that sound like a horn, on an amplified guitar — the way jazz guitar has soloed ever since.',
       'The head is built on riffs at a fast tempo. Play them short and clipped, and damp the strings between phrases so the gaps are part of the time.',
-      'The sheet music is in A♭. Use root-on-6 grips around the 4th fret and root-on-5 grips around the 11th, so the changes never pull your hand far from where the melody sits.',
+      'In E♭, the tonic sits at the 6th fret with a root-on-5 grip and at the 11th with root-on-6. Work around the 6th fret, so the changes never pull your hand far from where the melody sits.',
     ],
   },
 

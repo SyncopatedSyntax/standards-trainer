@@ -377,19 +377,19 @@ C.
 **The late-October 2026 additions** (Sentimental Journey, Jersey Bounce, As
 Long as I Live, Flying Home — Zak's picks, at the end of tier 3, easiest
 first) were researched the same way, through web search only: this session
-could not reach jazzstandards.com or Wikipedia mirrors directly. Zak gave no
-keys, so each is the published sheet-music key. The weak calls:
-- **Jersey Bounce** — C is the published key (Musicnotes), but a lead-sheet
-  site has it in B♭; its guitar note says so. AABA 32 rests on one
-  aggregator. Its chart peak is reported as both number one and number two,
-  and the text says sources disagree.
+could not reach jazzstandards.com or Wikipedia mirrors directly. Keys: Zak
+set Jersey Bounce in F and Flying Home in E♭ (the published sheet music has
+them in C and A♭); the other two are the published sheet-music key. The weak
+calls:
+- **Jersey Bounce** — AABA 32 rests on one aggregator. Its chart peak is
+  reported as both number one and number two, and the text says sources
+  disagree.
 - **Sentimental Journey** — AABA 32 rests on one aggregator; C is the
   published key.
 - **As Long as I Live** — F comes from modern editions, not a first printing.
   AABA 32 is from a lead-sheet site, supported by a NYFOS essay that describes
   three A sections and a four-line bridge.
-- **Flying Home** — A♭ is the published key; one transcription of the 1939
-  record gives E♭. The sextet's studio date is given as 2 October and as
+- **Flying Home** — the sextet's studio date is given as 2 October and as
   6 November 1939, so the fact names both.
 
 `verify.mjs` catches the mechanical failures only: both fields present, at
