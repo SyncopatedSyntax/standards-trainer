@@ -10,6 +10,16 @@ export const btn = (on, color = ACCENT) => ({
   color: on ? color : '#888', minHeight: '32px', touchAction: 'manipulation',
 });
 export const panel = { background: '#13121f', border: '1px solid #2a2840', borderRadius: '11px', padding: '12px' };
+
+// The three answers, as every screen shows them — in the order of the
+// buttons (lib/srs.js GRADES). `color` fills the chosen button, `text` is the
+// result written out, `ink` is text on the filled button.
+export const GRADE_UI = {
+  got: { label: 'Got it', mark: '✓', color: '#00b894', text: '#00b894', ink: '#04241c' },
+  almost: { label: 'Almost', mark: '≈', color: '#e8a838', text: '#f0b54a', ink: '#2a1d05' },
+  shaky: { label: 'Shaky', mark: '↺', color: '#ff6363', text: '#ff8f8f', ink: '#2a0808' },
+};
+export const gradeText = g => `${GRADE_UI[g].mark} ${GRADE_UI[g].label}`;
 export const labelCss = { fontSize: '10px', color: '#888', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' };
 
 // Labelled text input.

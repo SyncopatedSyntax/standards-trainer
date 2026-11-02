@@ -4,11 +4,11 @@
 // forScore — this app tracks what you know, not the music.
 
 import { useState } from 'react';
-import { btn, panel, labelCss, TextArea } from './ui.jsx';
+import { btn, panel, labelCss, TextArea, GRADE_UI } from './ui.jsx';
 import AnswerHistory from './AnswerHistory.jsx';
 import { StageBadge, UP_NEXT } from './TuneStatus.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { cardId, isSkillSolid, todayStr, tuneStage, learnedOn, relativeDay, gradedToday, dayLabel, tuneSkills, lastPlayed, agoLabel } from '../lib/srs.js';
+import { cardId, isSkillSolid, todayStr, tuneStage, learnedOn, relativeDay, gradedToday, lastGrade, GRADES, dayLabel, tuneSkills, lastPlayed, agoLabel } from '../lib/srs.js';
 
 export default function TuneDetail({ tune, active, upNext, srs, notes, skills, onBack, onActivate, onDeactivate, onSetNote, onToggleNext, onGrade, onUngrade, onEditAnswer, onDeleteAnswer, onClearEarlier, onSetTuneSkill, onRemoveCustom }) {
   const today = todayStr();
@@ -131,12 +131,13 @@ export default function TuneDetail({ tune, active, upNext, srs, notes, skills, o
                 );
               }
               // Answered today: the chosen button stays lit and a line says it
-              // was saved. Tapping again does not grade twice — the other button
+              // was saved. Tapping again does not grade twice — another button
               // changes today's answer instead (lib/srs.js gradeCard).
               const done = gradedToday(card, today);
-              const pick = (ok, color, ink) => done && card.lastOk === ok
-                ? { ...btn(true, color), flex: 1, background: color, color: ink, borderColor: color, fontWeight: 800 }
-                : { ...btn(false, color), flex: 1, color: ok ? '#00b894' : '#ff8f8f', borderColor: color + '44' };
+              const chosen = done ? lastGrade(card) : null;
+              const pick = g => chosen === g
+                ? { ...btn(true, GRADE_UI[g].color), flex: 1, minHeight: '44px', background: GRADE_UI[g].color, color: GRADE_UI[g].ink, borderColor: GRADE_UI[g].color, fontWeight: 800 }
+                : { ...btn(false, GRADE_UI[g].color), flex: 1, minHeight: '44px', color: GRADE_UI[g].text, borderColor: GRADE_UI[g].color + '44' };
               return (
                 <div key={s.id} style={{ background: '#0f0e17', border: `1px solid ${solid ? ACCENT + '55' : '#2a2840'}`, borderRadius: '9px', padding: '9px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -147,13 +148,16 @@ export default function TuneDetail({ tune, active, upNext, srs, notes, skills, o
                   </div>
                   <div style={{ fontSize: '11px', color: '#888', margin: '4px 0 7px', lineHeight: 1.5 }}>{s.blurb}</div>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <button onClick={() => onGrade(id, true)} aria-pressed={done && card.lastOk === true} style={pick(true, '#00b894', '#04241c')}>{done && card.lastOk ? '✓ Got it' : 'Got it'}</button>
-                    <button onClick={() => onGrade(id, false)} aria-pressed={done && card.lastOk === false} style={pick(false, '#ff6363', '#2a0808')}>{done && !card.lastOk ? '✓ Shaky' : 'Shaky'}</button>
+                    {GRADES.map(g => (
+                      <button key={g} onClick={() => onGrade(id, g)} aria-pressed={chosen === g} style={pick(g)}>
+                        {chosen === g ? `✓ ${GRADE_UI[g].label}` : GRADE_UI[g].label}
+                      </button>
+                    ))}
                   </div>
                   {done && (
-                    <div key={String(card.lastOk)} className="st-pop" role="status" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '7px', fontSize: '11px', color: '#aaa', lineHeight: 1.5 }}>
+                    <div key={chosen} className="st-pop" role="status" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '7px', fontSize: '11px', color: '#aaa', lineHeight: 1.5 }}>
                       <span style={{ flex: 1 }}>
-                        <b style={{ color: card.lastOk ? '#00b894' : '#ff8f8f' }}>Saved for today</b> — next review {relativeDay(card.nextDue, today)}. Tap the other button to change it.
+                        <b style={{ color: GRADE_UI[chosen].text }}>Saved for today</b> — next review {relativeDay(card.nextDue, today)}. Tap another button to change it.
                       </span>
                       <button onClick={() => onUngrade(id)} style={{ ...btn(false), minHeight: '40px', padding: '6px 12px', color: '#bbb' }}>Undo</button>
                     </div>

@@ -1,39 +1,38 @@
 // Every answer behind one tune's schedule, newest first, each one editable.
 //
 // This is not a cosmetic log. The schedule is replayed from it (lib/srs.js
-// `replay`), so turning an old Got it into Shaky pulls the next review in,
+// `replay`), so turning an old Got it into Shaky or Almost pulls the next review in,
 // exactly as if that is what you had said at the time — which is the point:
 // a mis-tap three days ago should not keep a skill out of the queue for weeks.
 
 import { useState } from 'react';
-import { btn, panel, labelCss } from './ui.jsx';
+import { btn, panel, labelCss, GRADE_UI, gradeText } from './ui.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { historyOf, tuneHistory, earlierAnswers, relativeDay, dayLabel } from '../lib/srs.js';
+import { historyOf, tuneHistory, earlierAnswers, relativeDay, dayLabel, gradeOf, GRADES } from '../lib/srs.js';
 
 const SHOW = 12;
-const okColor = ok => (ok ? '#00b894' : '#ff8f8f');
-const okText = ok => (ok ? '✓ Got it' : '↺ Shaky');
 const small = { ...btn(false), minHeight: '40px', padding: '6px 12px', color: '#bbb' };
 
 // The open entry. `taken` is the other days this skill already has an answer
 // on, so moving the date onto one can be flagged before Save replaces it.
 function Editor({ entry, skillLabel, taken, today, onSave, onDelete, onCancel }) {
-  const [ok, setOk] = useState(entry.ok);
+  const [g, setG] = useState(gradeOf(entry));
   const [d, setD] = useState(entry.d);
   const [confirm, setConfirm] = useState(false);
   const isDate = /^\d{4}-\d{2}-\d{2}$/.test(d);
   const future = isDate && d > today;
   const clash = isDate && d !== entry.d && taken.has(d);
-  const pick = (val, color, ink) => ok === val
-    ? { ...btn(true, color), flex: 1, background: color, color: ink, borderColor: color, fontWeight: 800 }
-    : { ...btn(false, color), flex: 1, color: okColor(val), borderColor: color + '44' };
+  const pick = val => g === val
+    ? { ...btn(true, GRADE_UI[val].color), flex: 1, minHeight: '40px', background: GRADE_UI[val].color, color: GRADE_UI[val].ink, borderColor: GRADE_UI[val].color, fontWeight: 800 }
+    : { ...btn(false, GRADE_UI[val].color), flex: 1, minHeight: '40px', color: GRADE_UI[val].text, borderColor: GRADE_UI[val].color + '44' };
 
   return (
     <div className="st-pop" style={{ background: '#0f0e17', border: `1px solid ${ACCENT}55`, borderRadius: '9px', padding: '10px', margin: '4px 0' }}>
       <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#fff', marginBottom: '8px' }}>Edit — {skillLabel}</div>
       <div style={{ display: 'flex', gap: '6px' }}>
-        <button onClick={() => setOk(true)} aria-pressed={ok} style={pick(true, '#00b894', '#04241c')}>Got it</button>
-        <button onClick={() => setOk(false)} aria-pressed={!ok} style={pick(false, '#ff6363', '#2a0808')}>Shaky</button>
+        {GRADES.map(val => (
+          <button key={val} onClick={() => setG(val)} aria-pressed={g === val} style={pick(val)}>{GRADE_UI[val].label}</button>
+        ))}
       </div>
       <label style={{ display: 'block', marginTop: '9px' }}>
         <span style={{ ...labelCss, display: 'block', marginBottom: '4px' }}>Day</span>
@@ -47,7 +46,7 @@ function Editor({ entry, skillLabel, taken, today, onSave, onDelete, onCancel })
         </div>
       )}
       <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
-        <button onClick={() => onSave({ ok, d })} disabled={!isDate || future}
+        <button onClick={() => onSave({ g, d })} disabled={!isDate || future}
           style={{ ...btn(true), flex: 1, minHeight: '40px', opacity: !isDate || future ? 0.4 : 1 }}>Save</button>
         <button onClick={onCancel} style={small}>Cancel</button>
       </div>
@@ -119,7 +118,7 @@ export default function AnswerHistory({ tune, srs, skills, today, onEdit, onDele
 
       {list.length === 0 && earlier.length === 0 ? (
         <div style={{ fontSize: '12px', color: '#888', lineHeight: 1.6 }}>
-          Nothing answered yet. Every Got it and Shaky lands here — one per skill per day — and can be changed or deleted later.
+          Nothing answered yet. Every answer lands here — one per skill per day — and can be changed or deleted later.
         </div>
       ) : (
         <div>
@@ -133,9 +132,9 @@ export default function AnswerHistory({ tune, srs, skills, today, onEdit, onDele
                   return (
                     <Editor key={k} entry={e} skillLabel={label[e.skill]} taken={taken} today={today}
                       onCancel={() => setEditing(null)}
-                      onSave={({ ok, d }) => {
-                        if (ok === e.ok && d === e.d) { setEditing(null); return; }   // nothing changed: do not count an edit
-                        onEdit(e.id, e.d, { ok, d });
+                      onSave={({ g, d }) => {
+                        if (g === gradeOf(e) && d === e.d) { setEditing(null); return; }   // nothing changed: do not count an edit
+                        onEdit(e.id, e.d, { g, d });
                         finish(e, 'Saved');
                       }}
                       onDelete={() => { onDelete(e.id, e.d); finish(e, 'Deleted'); }} />
@@ -144,7 +143,7 @@ export default function AnswerHistory({ tune, srs, skills, today, onEdit, onDele
                 return (
                   <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 0' }}>
                     <span style={{ flex: 1, fontSize: '12.5px', color: '#ddd', fontWeight: 700 }}>{label[e.skill]}</span>
-                    <span style={{ fontSize: '12px', color: okColor(e.ok), fontWeight: 700 }}>{okText(e.ok)}</span>
+                    <span style={{ fontSize: '12px', color: GRADE_UI[gradeOf(e)].text, fontWeight: 700 }}>{gradeText(gradeOf(e))}</span>
                     <button onClick={() => { setEditing(k); setDone(null); }} style={small}>Edit</button>
                   </div>
                 );
@@ -172,7 +171,7 @@ export default function AnswerHistory({ tune, srs, skills, today, onEdit, onDele
                 return (
                   <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 0' }}>
                     <span style={{ flex: 1, fontSize: '12.5px', color: '#ddd', fontWeight: 700 }}>{label[e.skill]}</span>
-                    <span style={{ fontSize: '12px', color: okColor(e.reps > 0), fontWeight: 700 }}>{e.reps > 0 ? `✓ ${e.reps} in a row` : '↺ ended Shaky'}</span>
+                    <span style={{ fontSize: '12px', color: e.reps > 0 ? GRADE_UI.got.text : GRADE_UI.shaky.text, fontWeight: 700 }}>{e.reps > 0 ? `✓ ${e.reps} in a row` : '↺ ended Shaky'}</span>
                     <button onClick={() => { setEditing(k); setDone(null); }} style={small}>Clear</button>
                   </div>
                 );

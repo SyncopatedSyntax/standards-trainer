@@ -82,13 +82,58 @@ card. Do not "fix" this by eagerly writing four entries.
 
 ## Spaced repetition
 
-`lib/srs.js` — SM-2, copied verbatim from `Focused-Chord-Trainer/lib/srs.js`
-(which took it from Chord Trainer). Deliberately unchanged so a fix in one can
-be carried to the others.
+`lib/srs.js` — SM-2 as in the rest of the toolbox (Chord Trainer's, via
+Focused Chord Trainer), **with three answers instead of two** since November
+2026. A **card** here is one skill on one tune — the changes to a tune you
+play weekly stay solid while its head quietly comes due.
 
-What differs is only what a **card** is: elsewhere a chord or a shape, here one
-skill on one tune. That is the whole point — the changes to a tune you play
-weekly stay solid while its head quietly comes due.
+### Got it, Almost, Shaky
+
+Zak's call, after asking whether flashcard SM-2 suits learning tunes. With two
+answers, every imperfect run while learning a tune was a Shaky, so it came
+back every day; one fumble on a tune known for months threw it back to the
+start; and "solid" (two Got its in a row, with a first gap of one day) only
+meant two days running. So:
+
+- **The answers are the jam test** — could you play it at a jam tonight? Got
+  it = from memory, in time, through the form without stopping, at least at the
+  slow end of the tempo range. Almost = got through from memory, with slips.
+  Shaky = couldn't get through (needed the chart, stopped, got lost). The
+  Guide has a skill-by-skill version; Today and the tune page say it in a line.
+- **The schedule** (`updateSRS`; the table in its comment is the spec):
+
+  |        | while learning | once solid (3 Got its in a row) |
+  |--------|----------------|---------------------------------|
+  | Got it | 1 day, 6, then × ease (15, 38…) | keeps growing × ease |
+  | Almost | 2 days, +1 each time, up to 6; run unchanged, no ease change | half the gap it had, at least 3; stays solid |
+  | Shaky  | tomorrow; run restarts; **no ease change** | tomorrow; starts over; ease −0.2 |
+
+  Ease as SM-2: 2.5 start, +0.1 per Got it up to 2.5, floor 1.3. Only a Shaky
+  on a solid skill lowers it — shaky while learning is normal.
+- **Almost on a solid skill is cap-aware.** Above the refresher ceiling the gap
+  a tune actually had is the ceiling, not SM-2's 238 or 595 days; halving the
+  uncapped gap would have made Almost on a long-known tune do nothing visible.
+  So `gradeCard`/`replay`/edits take `cap` (App passes the setting via
+  `capRef`) and halve `min(interval, cap)`. This is the one place the ceiling
+  reaches the stored schedule; everything else still applies it on read.
+- `LEARNED_REPS = 3`. Tunes that counted as learned on two Got its moved back
+  to Learning until a third — expected, and told to Zak.
+- **Storage.** History entries are `{ d, g, ok }`: `g` is the answer, `ok`
+  (true only for Got it) is kept so a device still on the two-answer version
+  reads an Almost as a Shaky rather than not at all. Entries saved before have
+  only `ok` and read as Got it / Shaky (`gradeOf`). Cards carry `lastG` beside
+  `lastOk`; `lastGrade()` reads either. `true`/`false` are still accepted
+  wherever an answer is.
+- **Existing schedules are not migrated.** A card switches to the new rules
+  the next time it is answered or edited — its whole history is then replayed
+  under them (so a learning-phase Shaky stops costing ease). Nothing moves
+  before that.
+- The other trainers keep the two-answer engine on purpose: drilling a chord or
+  a shape really is flashcard-like.
+
+verify.mjs pins every rule against hand-worked numbers (not the engine's own
+output), including the Guide's learning example: Shaky, Shaky, Almost, Almost,
+Got it, Almost, Got it, Got it → solid on day 16, next review day 31.
 
 **A day is the phone's own calendar day** — `todayStr()` reads the local
 date — and `addDays` does calendar arithmetic on the day strings in UTC (see
@@ -101,18 +146,18 @@ filed a day ahead); they can be moved in History if it matters.
 **One answer per card per day** (`gradeCard`). Zak found that tapping Got it
 several times on a tune's page kept pushing the next review further out —
 every tap was a fresh SM-2 success. Now a repeat tap the same day *replaces*
-that day's answer, so it counts once, and tapping the other button changes
+that day's answer, so it counts once, and tapping another button changes
 today's answer rather than adding one. `ungradeCard` takes today's answer back
-(to no card at all, if it was the first). `last`/`lastOk` are how the tune page
+(to no card at all, if it was the first). `last`/`lastG` are how the tune page
 knows to light the chosen button.
 
 ### The answer history
 
 Zak asked to see past answers and to fix or delete them. So a card keeps
-`hist` — `[{ d: 'YYYY-MM-DD', ok }]`, at most one per day — and its schedule
+`hist` — `[{ d: 'YYYY-MM-DD', g, ok }]`, at most one per day — and its schedule
 (`ef`, `interval`, `reps`, `nextDue`) is **never stored independently of it**:
-every change goes through `replay(base, hist, edits)`, which folds the
-unchanged SM-2 engine over the log in date order, each answer dated its own day
+every change goes through `replay(base, hist, edits, cap)`, which folds the
+engine above over the log in date order, each answer dated its own day
 (`updateSRS` gained an `on` date for exactly this). Editing an old answer —
 result, day, or both — or deleting it therefore re-derives the schedule as if
 the history had always read that way. A mis-tapped Got it from last week stops
@@ -154,7 +199,7 @@ each and checks the card against that fold every time.
 
 **Where it shows.** The tune page's **History** panel (`components/AnswerHistory.jsx`),
 under the four skills: newest first, one heading per day, Edit opens an inline
-editor (Got it/Shaky, a date input capped at today, Save, Delete — two taps).
+editor (Got it/Almost/Shaky, a date input capped at today, Save, Delete — two taps).
 A confirmation line after each change reads the new next review back from the
 schedule. Progress has **Recent answers** across all tunes, read-only, tapping
 through to the tune — an answer is edited next to the other skills it is
@@ -169,7 +214,7 @@ next review …" line with Undo; on Today the answered row turns into a line
 with the result, the next review and Undo (see Tabs).
 
 `tuneIsReady()` = all of the tune's skills (four, unless some are switched
-off) at `reps >= 2`, the same "learned" bar Diatonic uses. That drives the
+off) solid — `reps >= LEARNED_REPS` (3). That drives the
 Progress tab's headline number: how many tunes you could actually call tonight.
 
 ### Stages: learning, in repertoire, needs a refresher
@@ -409,7 +454,7 @@ pipe-delimited bars *and* three or more absolute chord symbols in a row.
 Each serves one of the three jobs; none duplicates iReal Pro or forScore.
 
 1. **One refresher per learned tune** instead of four: "play it through" →
-   Got it, or Shaky + which skill slipped, and only that skill drops back.
+   Got it, or Almost/Shaky + which skill slipped, and only that skill drops back.
    At 44 tunes × 4 skills the queue is 176 cards; this is the fix for that, and
    the biggest change on the list — discuss with Zak before building.
 2. **A link per tune into iReal Pro / forScore**, so a refresher is one tap

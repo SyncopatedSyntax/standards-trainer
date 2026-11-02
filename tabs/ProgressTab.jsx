@@ -2,10 +2,10 @@
 // how many tunes you could actually call tonight.
 
 import { useMemo, useState } from 'react';
-import { btn, panel, labelCss, EmptyState } from '../components/ui.jsx';
+import { btn, panel, labelCss, EmptyState, GRADE_UI, gradeText } from '../components/ui.jsx';
 import TuneStatus, { groupByStage, STAGES } from '../components/TuneStatus.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { stats, forecast, tuneIsReady, todayStr, recentAnswers, dayLabel, learnedTimeline, learnedThisMonth } from '../lib/srs.js';
+import { stats, forecast, tuneIsReady, todayStr, recentAnswers, dayLabel, learnedTimeline, learnedThisMonth, gradeOf } from '../lib/srs.js';
 
 export default function ProgressTab({ tunes, byId, active, upNext, srs, skills, onGoTunes, onGoTune }) {
   const today = todayStr();
@@ -188,7 +188,7 @@ export default function ProgressTab({ tunes, byId, active, upNext, srs, skills, 
                     <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t?.title || e.tuneId}</div>
                     <div style={{ fontSize: '10px', color: '#777', marginTop: '1px' }}>{dayLabel(e.d, today)} · {skillLabel[e.skill]}</div>
                   </div>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: e.ok ? '#00b894' : '#ff8f8f' }}>{e.ok ? '✓ Got it' : '↺ Shaky'}</span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: GRADE_UI[gradeOf(e)].text }}>{gradeText(gradeOf(e))}</span>
                 </div>
               );
             })}

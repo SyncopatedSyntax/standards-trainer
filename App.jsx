@@ -100,6 +100,9 @@ export default function App() {
     setSettings(prev => { const s = { ...prev, maxGap: days }; write(K_SETTINGS, s); return s; });
   }, []);
   const maxGap = settings.maxGap === undefined ? DEFAULT_MAX_GAP : settings.maxGap;
+  // The engine needs the ceiling too: an Almost on a solid skill halves the gap
+  // it actually had, which above the ceiling is the ceiling (lib/srs.js).
+  const capRef = useRef(maxGap); capRef.current = maxGap;
   // Every screen reads the schedule through the refresher ceiling; grading
   // and history edits go to the raw cards via srsRef (lib/srs.js capDue).
   const srsView = useMemo(() => withMaxGap(srs, maxGap), [srs, maxGap]);
@@ -143,11 +146,12 @@ export default function App() {
     if (card) s[id] = card; else delete s[id];
     setSrs(s); write(K_SRS, s);
   }, []);
-  const grade = useCallback((id, correct) => putCard(id, gradeCard(srsRef.current[id], correct)), [putCard]);
-  const ungrade = useCallback(id => putCard(id, ungradeCard(srsRef.current[id])), [putCard]);
-  const editAns = useCallback((id, date, change) => putCard(id, editAnswer(srsRef.current[id], date, change)), [putCard]);
-  const deleteAns = useCallback((id, date) => putCard(id, deleteAnswer(srsRef.current[id], date)), [putCard]);
-  const clearEarly = useCallback(id => putCard(id, clearEarlier(srsRef.current[id])), [putCard]);
+  // `answer` is 'got' | 'almost' | 'shaky'.
+  const grade = useCallback((id, answer) => putCard(id, gradeCard(srsRef.current[id], answer, undefined, capRef.current)), [putCard]);
+  const ungrade = useCallback(id => putCard(id, ungradeCard(srsRef.current[id], undefined, capRef.current)), [putCard]);
+  const editAns = useCallback((id, date, change) => putCard(id, editAnswer(srsRef.current[id], date, change, undefined, capRef.current)), [putCard]);
+  const deleteAns = useCallback((id, date) => putCard(id, deleteAnswer(srsRef.current[id], date, capRef.current)), [putCard]);
+  const clearEarly = useCallback(id => putCard(id, clearEarlier(srsRef.current[id], capRef.current)), [putCard]);
 
   const setNote = useCallback((tuneId, text) => {
     const n = { ...notesRef.current, [tuneId]: text };

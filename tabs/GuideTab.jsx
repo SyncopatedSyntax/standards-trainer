@@ -6,7 +6,7 @@
 // are learn-once, not per-tune, so scheduling them per tune would be noise.
 
 import { useState } from 'react';
-import { panel } from '../components/ui.jsx';
+import { panel, GRADE_UI } from '../components/ui.jsx';
 import { ACCENT } from '../lib/tool.js';
 import { SKILLS } from '../data/tunes.js';
 
@@ -23,11 +23,19 @@ function Section({ title, children, open, onToggle }) {
   );
 }
 
-const Item = ({ term, children }) => (
+const Item = ({ term, color = '#fff', children }) => (
   <p style={{ margin: '0 0 10px' }}>
-    <b style={{ color: '#fff' }}>{term}</b> — {children}
+    <b style={{ color }}>{term}</b> — {children}
   </p>
 );
+
+// What each answer means, skill by skill: the jam test applied to it.
+const SKILL_TEST = [
+  ['Head', 'the melody once through, every note there, no stops.', 'you needed a peek, stopped, or guessed a phrase.'],
+  ['Changes', 'comped the whole form with no hesitation at the bridge or the turnaround.', 'you hesitated, or hit a wrong chord and had to recover.'],
+  ['Form', 'two choruses without losing your place — you knew where bar 1 was each time.', 'you lost count, or came in early or late at the top.'],
+  ['Solo', 'two choruses where your lines landed on the changes.', 'you lost the changes, or noodled without hearing them.'],
+];
 
 export default function GuideTab() {
   const [open, setOpen] = useState('skills');
@@ -47,8 +55,8 @@ export default function GuideTab() {
         </p>
         {SKILLS.map(s => <Item key={s.id} term={s.label}>{s.blurb}</Item>)}
         <p style={{ margin: '10px 0 0', color: '#888' }}>
-          A tune counts as <b style={{ color: ACCENT }}>learned</b> once all four have been got
-          right at least twice, at the same time.
+          A tune counts as <b style={{ color: ACCENT }}>learned</b> once all four are solid at the
+          same time — three Got its in a row each.
         </p>
         <p style={{ margin: '10px 0 0', color: '#888' }}>
           Not every tune needs all four. On a tune&rsquo;s page you can switch a skill off — the head
@@ -57,10 +65,46 @@ export default function GuideTab() {
         </p>
       </Section>
 
+      <Section title="Got it, Almost, Shaky" open={open === 'answers'} onToggle={t('answers')}>
+        <p style={{ margin: '0 0 10px' }}>
+          Play the skill with the chart out of sight — a backing track is fine — then ask one
+          question: could I play this at a jam tonight?
+        </p>
+        <Item term="Got it" color={GRADE_UI.got.text}>yes: from memory, in time, through the whole
+          form without stopping, and at least at the slow end of the tune&rsquo;s tempo range.</Item>
+        <Item term="Almost" color={GRADE_UI.almost.text}>you got through it from memory, but with
+          slips — a hesitation, a fumble you recovered from, or slower than the tempo range.</Item>
+        <Item term="Shaky" color={GRADE_UI.shaky.text}>you couldn&rsquo;t get through it: you
+          needed the chart, stopped, or got lost.</Item>
+        <p style={{ margin: '4px 0 6px', color: '#fff', fontWeight: 700 }}>Skill by skill, Got it means&hellip;</p>
+        {SKILL_TEST.map(([skill, got, shaky]) => (
+          <p key={skill} style={{ margin: '0 0 8px' }}>
+            <b style={{ color: '#fff' }}>{skill}</b> — {got} <span style={{ color: '#888' }}>Shaky if {shaky}</span>
+          </p>
+        ))}
+        <p style={{ margin: '6px 0 0', color: '#888' }}>
+          Anything between the two is Almost. Grade honestly — the schedule is only as good as the
+          grading, and the person it fools is you.
+        </p>
+      </Section>
+
       <Section title="How the reviews work" open={open === 'srs'} onToggle={t('srs')}>
         <p style={{ margin: '0 0 10px' }}>
-          Spaced repetition. Get a card right and it comes back later each time — a day, then
-          six, then further out. Mark it shaky and it returns tomorrow.
+          Spaced repetition: each answer decides when that skill comes back. While you are still
+          learning a skill:
+        </p>
+        <Item term="Got it" color={GRADE_UI.got.text}>back in a day, then six days, then further
+          out each time (15, 38&hellip;). Three in a row and the skill is solid.</Item>
+        <Item term="Almost" color={GRADE_UI.almost.text}>back in two days, then a day longer each
+          time, up to six. It doesn&rsquo;t count toward solid, but it doesn&rsquo;t break your run
+          of Got its either.</Item>
+        <Item term="Shaky" color={GRADE_UI.shaky.text}>back tomorrow, and your run of Got its
+          starts again. Being shaky while learning is normal, so it costs nothing later.</Item>
+        <p style={{ margin: '0 0 10px' }}>
+          Once a skill is solid, <b style={{ color: GRADE_UI.almost.text }}>Almost</b> brings it back
+          in half the time it had been away (at least three days), and it stays solid.{' '}
+          <b style={{ color: GRADE_UI.shaky.text }}>Shaky</b> means you really did lose it: back
+          tomorrow, and it has to be built up again.
         </p>
         <p style={{ margin: '0 0 10px' }}>
           Left alone, the gaps would keep growing — past a year for a tune you know well. Not
@@ -74,12 +118,9 @@ export default function GuideTab() {
         <p style={{ margin: '0 0 10px' }}>
           One answer per skill per day: tapping again changes today&rsquo;s answer rather than
           adding another. Every answer is kept under <b style={{ color: '#fff' }}>History</b> on
-          the tune&rsquo;s page. Change one from Got it to Shaky, move it to another day or delete
-          it, and the schedule is worked out again as if you had answered that way at the time.
-        </p>
-        <p style={{ margin: 0, color: '#888' }}>
-          Grade honestly. The schedule is only as good as the grading, and the person it fools
-          is you.
+          the tune&rsquo;s page. Change one to a different answer, move it to another day or
+          delete it, and the schedule is worked out again as if you had answered that way at the
+          time.
         </p>
       </Section>
 

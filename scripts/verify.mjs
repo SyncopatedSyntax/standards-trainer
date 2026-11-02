@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { CORE_TUNES, TIERS, SKILLS, LETTER_FORMS } from '../data/tunes.js';
-import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, earlierAnswers, clearEarlier, isSkillSolid, cardId, learnedOn, tuneStage, capDue, withMaxGap, DEFAULT_MAX_GAP, learnedTimeline, learnedThisMonth, withTuneSkills, tuneSkills, dueCards, tuneStatus, tuneIsReady, stats, forecast, lastPlayed, agoLabel } from '../lib/srs.js';
+import { gradeCard, ungradeCard, gradedToday, updateSRS, todayStr, addDays, editAnswer, deleteAnswer, historyOf, tuneHistory, recentAnswers, hasUnloggedPast, earlierAnswers, clearEarlier, isSkillSolid, cardId, learnedOn, tuneStage, capDue, withMaxGap, DEFAULT_MAX_GAP, learnedTimeline, learnedThisMonth, withTuneSkills, tuneSkills, dueCards, tuneStatus, tuneIsReady, stats, forecast, lastPlayed, agoLabel, gradeOf, GRADES, lastGrade, LEARNED_REPS } from '../lib/srs.js';
 import { chartText, migrateCharts } from '../lib/migrate.js';
 
 let failures = 0;
@@ -158,6 +158,84 @@ check('the next day builds on today, and the engine is unchanged', () => {
   if (d2.hist?.length !== 2 || d2.hist[0].d !== today || d2.hist[1].d !== tomorrow) fail('both days should be on record, oldest first');
 });
 
+// The three answers, against numbers worked out by hand from the rules in the
+// Guide — not from the engine, which would only prove it agrees with itself.
+console.log('\nlib/srs.js — Got it, Almost, Shaky');
+const D0 = '2026-05-01';
+// Answer each one on the day the previous answer asked for; returns the gaps.
+const walk = (answers, cap = 0) => {
+  let c, day = D0; const gaps = [], days = [];
+  for (const a of answers) { days.push(day); c = gradeCard(c, a, day, cap); gaps.push(c.interval); day = c.nextDue; }
+  return { c, gaps, days };
+};
+const same = (got, want, what) => { if (got.join() !== want.join()) fail(`${what}: ${got.join(', ')} — expected ${want.join(', ')}`); };
+
+check('Got it: 1 day, 6, then × 2.5 — and solid at the third in a row', () => {
+  const { c, gaps } = walk(['got', 'got', 'got', 'got', 'got']);
+  same(gaps, [1, 6, 15, 38, 95], 'gaps');
+  if (LEARNED_REPS !== 3) fail(`solid should need 3 Got its, not ${LEARNED_REPS}`);
+  if (isSkillSolid(walk(['got', 'got']).c) || !isSkillSolid(walk(['got', 'got', 'got']).c)) fail('two Got its must not be solid; three must');
+  if (c.ef !== 2.5) fail(`the ease tops out at 2.5, got ${c.ef}`);
+});
+
+check('Almost while learning: 2 days, a day longer each time, up to 6 — the run untouched', () => {
+  const { c, gaps } = walk(['almost', 'almost', 'almost', 'almost', 'almost', 'almost']);
+  same(gaps, [2, 3, 4, 5, 6, 6], 'gaps');
+  if (c.reps !== 0 || c.ef !== 2.5) fail(`Almost alone must not build a run or move the ease (reps ${c.reps}, ease ${c.ef})`);
+  // It neither adds to the run nor breaks it.
+  same(walk(['got', 'almost', 'got']).gaps, [1, 2, 6], 'got, almost, got');
+  const r = walk(['got', 'got', 'almost', 'got']);
+  same(r.gaps, [1, 6, 6, 15], 'got, got, almost, got');
+  if (!isSkillSolid(r.c)) fail('three Got its with an Almost between them should be solid');
+});
+
+check('Shaky while learning: tomorrow, the run starts again, and no lasting penalty', () => {
+  const r = walk(['got', 'got', 'shaky']);
+  if (r.c.reps !== 0 || r.c.interval !== 1 || r.c.ef !== 2.5) fail(`after a learning Shaky: reps ${r.c.reps}, gap ${r.c.interval}, ease ${r.c.ef}`);
+  // Three Shakys then Got its: the same gaps as if the Shakys had not happened
+  // (under the old rules they cost 0.6 of ease, and the gaps came out 13, 30).
+  same(walk(['shaky', 'shaky', 'shaky', 'got', 'got', 'got', 'got']).gaps, [1, 1, 1, 1, 6, 15, 38], 'shaky ×3 then got ×4');
+});
+
+check('once solid: Almost halves the gap and stays solid; Shaky starts over and costs ease', () => {
+  const solid = walk(['got', 'got', 'got', 'got']).c;          // gap 38
+  const a = gradeCard(solid, 'almost', solid.nextDue);
+  if (a.interval !== 19 || !isSkillSolid(a) || a.reps !== 4) fail(`Almost on a 38-day gap: ${a.interval} days, reps ${a.reps}`);
+  if (gradeCard(a, 'got', a.nextDue).interval !== 48) fail('Got it after it grows from the halved gap (19 × 2.5 → 48)');
+  const s = gradeCard(solid, 'shaky', solid.nextDue);
+  if (s.interval !== 1 || s.reps !== 0 || isSkillSolid(s) || Math.abs(s.ef - 2.3) > 1e-9) fail(`Shaky on solid: gap ${s.interval}, reps ${s.reps}, ease ${s.ef}`);
+  // At least three days.
+  if (updateSRS({ ef: 2.5, reps: 4, interval: 4 }, 'almost', D0).interval !== 3) fail('Almost on a short solid gap should be 3 days at least');
+  // Above the ceiling, half the gap it actually had — the ceiling's.
+  const long = { ef: 2.5, reps: 6, interval: 238 };
+  if (updateSRS(long, 'almost', D0, 60).interval !== 30) fail('Almost on a capped 238-day gap should be 30 days (half of 60)');
+  if (updateSRS(long, 'almost', D0, 0).interval !== 119) fail('with no ceiling it is half the real gap');
+  if (updateSRS({ ef: 2.5, reps: 4, interval: 38 }, 'almost', D0, 60).interval !== 19) fail('under the ceiling the ceiling changes nothing');
+  if (capDue(gradeCard({ ef: 2.5, reps: 6, interval: 238, nextDue: D0 }, 'almost', D0, 60), 60).nextDue !== addDays(D0, 30)) fail('gradeCard must pass the ceiling through');
+});
+
+check('the learning example in the Guide: solid on day 16, next review day 31', () => {
+  const r = walk(['shaky', 'shaky', 'almost', 'almost', 'got', 'almost', 'got', 'got']);
+  same(r.days.map(d => Math.round((Date.parse(d) - Date.parse(D0)) / 86400000)), [0, 1, 2, 4, 7, 8, 10, 16], 'practice days');
+  if (!isSkillSolid(r.c) || r.c.nextDue !== addDays(D0, 31)) fail(`solid ${isSkillSolid(r.c)}, next ${r.c.nextDue}`);
+});
+
+check('answers are stored with their grade, and old ones read as Got it / Shaky', () => {
+  const c = gradeCard(undefined, 'almost', D0);
+  const e = c.hist[0];
+  if (e.g !== 'almost' || e.ok !== false) fail(`stored entry ${JSON.stringify(e)}`);
+  if (lastGrade(c) !== 'almost' || c.lastG !== 'almost' || c.lastOk !== false) fail('lastGrade / lastG / lastOk');
+  if (gradeOf({ d: D0, ok: true }) !== 'got' || gradeOf({ d: D0, ok: false }) !== 'shaky') fail('old entries');
+  if (lastGrade({ last: D0, lastOk: true }) !== 'got' || lastGrade(null) !== null) fail('lastGrade of an older card');
+  if (gradeCard(undefined, true, D0).hist[0].g !== 'got' || gradeCard(undefined, false, D0).hist[0].g !== 'shaky') fail('true / false still mean Got it / Shaky');
+  // Changing today's answer replaces it — still one per day.
+  const twice = gradeCard(gradeCard(undefined, 'got', D0), 'almost', D0);
+  if (twice.hist.length !== 1 || twice.hist[0].g !== 'almost') fail('a second answer the same day should replace the first');
+  // An edit can set any of the three.
+  const ed = editAnswer(gradeCard(undefined, 'got', D0), D0, { g: 'almost' }, addDays(D0, 3));
+  if (gradeOf(ed.hist[0]) !== 'almost' || ed.interval !== 2) fail(`edit to Almost: ${JSON.stringify(ed.hist[0])}, gap ${ed.interval}`);
+});
+
 check('undo takes back only today, and a first answer undoes to never-reviewed', () => {
   const today = todayStr(), yesterday = addDays(today, -1);
   if (ungradeCard(gradeCard(undefined, true, today), today) !== null) fail('undoing a first-ever answer should leave no card');
@@ -170,28 +248,31 @@ check('undo takes back only today, and a first answer undoes to never-reviewed',
 
 console.log('\nlib/srs.js — answer history');
 
-// The independent re-derivation: fold the SM-2 engine over a log, in date
-// order, each answer dated its own day. The app's card must always equal this
-// for whatever log it shows — that is the whole promise of the History list.
+// The independent re-derivation: fold the engine over a log, in date order,
+// each answer dated its own day. The app's card must always equal this for
+// whatever log it shows — that is the whole promise of the History list.
 const fold = (log, base = null) => [...log].sort((a, b) => a.d.localeCompare(b.d))
-  .reduce((st, e) => ({ ...st, ...updateSRS(st, e.ok, e.d) }), base);
+  .reduce((st, e) => ({ ...st, ...updateSRS(st, gradeOf(e), e.d) }), base);
 const SCHED = ['ef', 'interval', 'reps', 'nextDue'];
 const sameSched = (got, want, what) => { for (const k of SCHED) if (got?.[k] !== want?.[k]) fail(`${what}: ${k} ${got?.[k]}, expected ${want?.[k]}`); };
 // Deterministic pseudo-random sequences, so a failure reproduces.
 let seed = 7;
 const rnd = n => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
 const T0 = '2026-03-01';
-// A run of answers on random days, some days answered twice (a change of mind).
+// A run of answers on random days, some days answered twice (a change of mind):
+// half Got it, a quarter each Almost and Shaky.
 const run = () => {
   let card, day = T0, len = 2 + rnd(12);
   const log = new Map();
   for (let i = 0; i < len; i++) {
     if (rnd(3)) day = addDays(day, 1 + rnd(9));
-    const ok = rnd(4) !== 0;
-    card = gradeCard(card, ok, day); log.set(day, ok);
+    const g = ['got', 'got', 'almost', 'shaky'][rnd(4)];
+    card = gradeCard(card, g, day); log.set(day, g);
   }
-  return { card, log: [...log].map(([d, ok]) => ({ d, ok })), day };
+  return { card, log: [...log].map(([d, g]) => ({ d, g })), day };
 };
+// A different answer from the one given.
+const other = g => GRADES.filter(x => x !== g)[rnd(2)];
 
 check('the schedule always equals the engine replayed over the listed answers', () => {
   for (let i = 0; i < 400; i++) {
@@ -206,14 +287,15 @@ check('editing or deleting any answer re-derives the schedule from scratch', () 
   for (let i = 0; i < 400; i++) {
     const { card, log, day } = run();
     const at = log[rnd(log.length)];
-    // Flip the result.
-    const flipped = editAnswer(card, at.d, { ok: !at.ok }, day);
-    sameSched(flipped, fold(log.map(e => e.d === at.d ? { d: e.d, ok: !e.ok } : e)), `run ${i} flip`);
+    // Change the answer.
+    const to2 = other(at.g);
+    const flipped = editAnswer(card, at.d, { g: to2 }, day);
+    sameSched(flipped, fold(log.map(e => e.d === at.d ? { d: e.d, g: to2 } : e)), `run ${i} change`);
     // Move it to a free earlier day.
     let to = addDays(at.d, -(1 + rnd(5)));
     while (log.some(e => e.d === to)) to = addDays(to, -1);
-    const moved = editAnswer(card, at.d, { ok: at.ok, d: to }, day);
-    sameSched(moved, fold([...log.filter(e => e.d !== at.d), { d: to, ok: at.ok }]), `run ${i} move`);
+    const moved = editAnswer(card, at.d, { g: at.g, d: to }, day);
+    sameSched(moved, fold([...log.filter(e => e.d !== at.d), { d: to, g: at.g }]), `run ${i} move`);
     // Delete it.
     const gone = deleteAnswer(card, at.d);
     const rest = log.filter(e => e.d !== at.d);
@@ -238,7 +320,7 @@ check('seen never goes down on an edit or delete — sync settles two devices by
   for (let i = 0; i < 200; i++) {
     const { card, log, day } = run();
     const at = log[rnd(log.length)];
-    const e = editAnswer(card, at.d, { ok: !at.ok }, day);
+    const e = editAnswer(card, at.d, { g: other(at.g) }, day);
     if (!(e.seen > card.seen)) fail(`run ${i}: an edit should raise seen (${card.seen} → ${e.seen})`);
     const g = deleteAnswer(card, at.d);
     if (g && g.seen < card.seen) fail(`run ${i}: a delete lowered seen (${card.seen} → ${g.seen})`);
@@ -290,7 +372,7 @@ check('earlier answers can be cleared, leaving only the listed ones', () => {
   // With answers listed on top, clearing leaves exactly those answers.
   for (let i = 0; i < 200; i++) {
     const log = run().log;
-    const card = log.reduce((c, e) => gradeCard(c, e.ok, e.d), { ...legacy, seen: 3 });
+    const card = log.reduce((c, e) => gradeCard(c, e.g, e.d), { ...legacy, seen: 3 });
     const cleared = clearEarlier(card);
     sameSched(cleared, fold(log), `run ${i} clear`);
     if (hasUnloggedPast(cleared)) fail(`run ${i}: still has an unlogged past`);
@@ -324,9 +406,9 @@ check('a tune is learned from the first day all four skills were solid together'
   const D = n => addDays(T0, n);
   const srs = {};
   const answer = (skill, ok, d) => { srs[cardId('t', skill)] = gradeCard(srs[cardId('t', skill)], ok, d); };
-  // Two Got its on each skill, but solo's second one comes last, on day 9.
-  for (const sk of ['head', 'changes', 'form']) { answer(sk, true, D(0)); answer(sk, true, D(5)); }
-  answer('solo', true, D(0));
+  // Three Got its on each skill, but solo's third one comes last, on day 9.
+  for (const sk of ['head', 'changes', 'form']) { answer(sk, true, D(0)); answer(sk, true, D(1)); answer(sk, true, D(5)); }
+  answer('solo', true, D(0)); answer('solo', true, D(1));
   if (learnedOn(srs, 't', skills).learned) fail('three solid skills are not a learned tune');
   if (tuneStage(srs, 't', skills, D(1)) !== 'learning') fail('should be learning');
   answer('solo', true, D(9));
@@ -337,8 +419,8 @@ check('a tune is learned from the first day all four skills were solid together'
   if (tuneStage(srs, 't', skills, D(12)) !== 'refresher') fail('a learned tune with a shaky skill should need a refresher');
   if (learnedOn(srs, 't', skills).on !== D(9)) fail('a slip must not move the day it was learned');
   // Solid again and nothing due: back in the repertoire.
-  answer('changes', true, D(13)); answer('changes', true, D(14));
-  const later = D(15);
+  answer('changes', true, D(13)); answer('changes', true, D(14)); answer('changes', true, D(15));
+  const later = D(16);
   for (const sk of ['head', 'form', 'solo']) answer(sk, true, later);
   answer('changes', true, later);
   if (tuneStage(srs, 't', skills, later) !== 'repertoire') fail(`expected repertoire, got ${tuneStage(srs, 't', skills, later)}`);
@@ -357,10 +439,10 @@ check('a tune is learned from the first day all four skills were solid together'
 check('the growth list: learned tunes newest first, the undated last, and a monthly count', () => {
   const skills = [{ id: 'head' }, { id: 'changes' }, { id: 'form' }, { id: 'solo' }];
   const srs = {};
-  const learn = (t, d1, d2) => { for (const s of skills) srs[cardId(t, s.id)] = gradeCard(gradeCard(undefined, true, d1), true, d2); };
-  learn('a', '2026-09-01', '2026-09-08');          // learned 8 Sep
-  learn('b', '2026-10-01', '2026-10-09');          // learned 9 Oct
-  learn('c', '2026-10-02', '2026-10-20');          // learned 20 Oct
+  const learn = (t, d1, d2, d3) => { for (const s of skills) srs[cardId(t, s.id)] = gradeCard(gradeCard(gradeCard(undefined, true, d1), true, d2), true, d3); };
+  learn('a', '2026-09-01', '2026-09-02', '2026-09-08');   // learned 8 Sep
+  learn('b', '2026-10-01', '2026-10-02', '2026-10-09');   // learned 9 Oct
+  learn('c', '2026-10-02', '2026-10-03', '2026-10-20');   // learned 20 Oct
   srs[cardId('d', 'head')] = gradeCard(undefined, true, '2026-10-05');   // still learning
   const legacy = { ef: 2.5, interval: 15, reps: 3, nextDue: '2026-11-01' };
   for (const s of skills) srs[cardId('e', s.id)] = legacy;              // learned before the history
@@ -379,7 +461,7 @@ check('skills switched off for a tune stop counting everywhere, and come back in
   const D = n => addDays(T0, n);
   const srs = {};
   // A vocal tune Zak only comps on: Changes and Form learned, Head and Solo never touched.
-  for (const s of ['changes', 'form']) srs[cardId('v', s)] = gradeCard(gradeCard(undefined, true, D(0)), true, D(3));
+  for (const s of ['changes', 'form']) srs[cardId('v', s)] = gradeCard(gradeCard(gradeCard(undefined, true, D(0)), true, D(1)), true, D(3));
   // A second tune with all four, untouched.
   const plain = ALL, comp = withTuneSkills(ALL, { v: ['changes', 'form'] });
   if (tuneSkills(comp, 'v').map(s => s.id).join() !== 'changes,form') fail('tuneSkills for the chosen tune');

@@ -13,14 +13,16 @@
 // with Undo — that is also the feedback that a tap registered.
 
 import { useState, useMemo } from 'react';
-import { btn, panel, labelCss, EmptyState } from '../components/ui.jsx';
+import { btn, panel, labelCss, EmptyState, GRADE_UI, gradeText } from '../components/ui.jsx';
 import { ACCENT } from '../lib/tool.js';
-import { dueCards, todayStr, relativeDay } from '../lib/srs.js';
+import { dueCards, todayStr, relativeDay, GRADES } from '../lib/srs.js';
 
-const GOT = '#00b894', SHAKY = '#ff6363';
+const GOT = GRADE_UI.got.color;
 
-// One skill on one tune. Unanswered: what it asks, and the two answers.
-// Answered: one line with the result, when it comes back, and Undo.
+// One skill on one tune. Unanswered: what it asks, and the three answers, in
+// a row of their own under it — beside the text, three buttons squeezed the
+// skill's description into a sliver. Answered: one line with the result, when
+// it comes back, and Undo.
 function SkillRow({ card, skill, result, nextDue, today, onAnswer, onUndo }) {
   const answered = result !== undefined;
   return (
@@ -29,22 +31,24 @@ function SkillRow({ card, skill, result, nextDue, today, onAnswer, onUndo }) {
         <div className="st-pop" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '13px', fontWeight: 700, color: '#bbb', minWidth: '62px' }}>{skill?.label || card.skill}</span>
           <span role="status" style={{ flex: 1, fontSize: '11.5px', color: '#999', lineHeight: 1.4 }}>
-            <b style={{ color: result ? GOT : '#ff8f8f' }}>{result ? '✓ Got it' : '↺ Shaky'}</b> · back {relativeDay(nextDue, today)}
+            <b style={{ color: GRADE_UI[result].text }}>{gradeText(result)}</b> · back {relativeDay(nextDue, today)}
           </span>
           <button onClick={onUndo} style={{ ...btn(false), minHeight: '40px', padding: '6px 12px', color: '#bbb' }}>Undo</button>
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: '#fff' }}>
-              {skill?.label || card.skill}
-              {card.fresh && <span style={{ fontSize: '10px', fontWeight: 700, color: ACCENT, marginLeft: '6px' }}>first time</span>}
-            </div>
-            <div style={{ fontSize: '11px', color: '#888', lineHeight: 1.45, marginTop: '2px' }}>{skill?.blurb}</div>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 800, color: '#fff' }}>
+            {skill?.label || card.skill}
+            {card.fresh && <span style={{ fontSize: '10px', fontWeight: 700, color: ACCENT, marginLeft: '6px' }}>first time</span>}
           </div>
-          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-            <button onClick={() => onAnswer(true)} style={{ ...btn(true, GOT), minHeight: '42px', padding: '6px 10px' }}>Got it</button>
-            <button onClick={() => onAnswer(false)} style={{ ...btn(true, SHAKY), minHeight: '42px', padding: '6px 10px' }}>Shaky</button>
+          <div style={{ fontSize: '11px', color: '#888', lineHeight: 1.45, marginTop: '2px' }}>{skill?.blurb}</div>
+          <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+            {GRADES.map(g => (
+              <button key={g} onClick={() => onAnswer(g)}
+                style={{ ...btn(true, GRADE_UI[g].color), flex: 1, minHeight: '44px', padding: '6px 8px', fontSize: '12.5px' }}>
+                {GRADE_UI[g].label}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -55,7 +59,7 @@ function SkillRow({ card, skill, result, nextDue, today, onAnswer, onUndo }) {
 export default function TodayTab({ byId, active, srs, notes, skills, onGrade, onUngrade, onGoTunes, onGoTune }) {
   // Snapshot: computed once, from the schedule as it stood when the tab opened.
   const [queue] = useState(() => dueCards(srs, active, skills));
-  const [done, setDone] = useState({});     // cardId -> true|false, this visit
+  const [done, setDone] = useState({});     // cardId -> 'got' | 'almost' | 'shaky', this visit
   const [only, setOnly] = useState(null);   // a skill id, or null for all
   const today = todayStr();
   const skillById = useMemo(() => new Map(skills.map(s => [s.id, s])), [skills]);
@@ -70,7 +74,7 @@ export default function TodayTab({ byId, active, srs, notes, skills, onGrade, on
     return [...m].map(([tuneId, cards]) => ({ tuneId, cards: cards.sort((a, b) => skillOrder.get(a.skill) - skillOrder.get(b.skill)) }));
   }, [queue, skillOrder]);
 
-  const answer = (id, correct) => { onGrade(id, correct); setDone(d => ({ ...d, [id]: correct })); };
+  const answer = (id, g) => { onGrade(id, g); setDone(d => ({ ...d, [id]: g })); };
   const undo = id => { onUngrade(id); setDone(d => { const { [id]: _gone, ...rest } = d; return rest; }); };
 
   if (active.length === 0) {
@@ -129,12 +133,14 @@ export default function TodayTab({ byId, active, srs, notes, skills, onGrade, on
       {remaining === 0 ? (
         <div className="st-pop" style={{ ...panel, borderColor: ACCENT + '55', marginBottom: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '15px', fontWeight: 800, color: '#fff' }}>✅ Done — {gradedCount} reviewed</div>
-          <div style={{ fontSize: '12px', color: '#999', marginTop: '4px', lineHeight: 1.6 }}>Come back tomorrow. Anything you marked shaky returns then.</div>
+          <div style={{ fontSize: '12px', color: '#999', marginTop: '4px', lineHeight: 1.6 }}>Come back tomorrow. Anything you marked Shaky returns then.</div>
         </div>
       ) : (
         <div style={{ fontSize: '11.5px', color: '#888', lineHeight: 1.6, marginBottom: '10px' }}>
-          Pick any tune and any skill. Play it — from memory, or along with iReal Pro — then answer honestly:
-          the schedule is only as good as the grading.
+          Pick any tune and any skill and play it, chart out of sight — a backing track is fine.
+          <b style={{ color: GRADE_UI.got.text }}> Got it</b> means you could play it at a jam tonight: from memory, in time, no stops.
+          <b style={{ color: GRADE_UI.almost.text }}> Almost</b>: you got through, with slips.
+          <b style={{ color: GRADE_UI.shaky.text }}> Shaky</b>: you couldn&rsquo;t get through.
         </div>
       )}
 
@@ -174,7 +180,7 @@ export default function TodayTab({ byId, active, srs, notes, skills, onGrade, on
               {cards.map(c => (
                 <SkillRow key={c.id} card={c} skill={skillById.get(c.skill)} result={done[c.id]}
                   nextDue={srs[c.id]?.nextDue} today={today}
-                  onAnswer={ok => answer(c.id, ok)} onUndo={() => undo(c.id)} />
+                  onAnswer={g => answer(c.id, g)} onUndo={() => undo(c.id)} />
               ))}
 
               {/* Behind a tap on purpose: your notes may hold the changes, and
@@ -197,7 +203,7 @@ export default function TodayTab({ byId, active, srs, notes, skills, onGrade, on
       </div>
 
       <div style={{ fontSize: '10px', color: '#666', marginTop: '12px', textAlign: 'center', lineHeight: 1.6 }}>
-        Shaky brings it back tomorrow. Got it pushes it further out each time you get it right.
+        Shaky brings it back tomorrow, Almost in a few days. Got it pushes it further out each time.
       </div>
     </div>
   );
